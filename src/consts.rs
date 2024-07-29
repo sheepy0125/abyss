@@ -10,3 +10,14 @@ macro_rules! from_environment {
 lazy_static! {
     pub static ref DATABASE_URL: String = from_environment!("DATABASE_URL");
 }
+
+pub const FOOTER: &str = r#"
+```
+       _
+  __ _| |__  _   _ ___ ___
+ / _` | '_ \| | | / __/ __|
+| (_| | |_) | |_| \__ \__ \
+ \__,_|_.__/ \__, |___/___/
+             |___/
+```
+"#;

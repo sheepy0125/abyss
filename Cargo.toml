@@ -6,10 +6,20 @@ edition = "2021"
 [dependencies]
 anyhow = { version = "1.0.86", features = ["backtrace"] }
 diesel = { version = "2.2.2", features = ["postgres", "r2d2"] }
+dotenvy = "0.15.7"
 fix_fn = "1.0.2"
 lazy_static = "1.5.0"
+log = "0.4.22"
+pretty_env_logger = "0.5.0"
+rossweisse = "0.0.3"
 serde = { version = "1.0.204", features = ["derive"] }
-windmark = "0.3.11"
+tokio = { version = "1.39.2", features = ["full"] }
+twinstar = "0.4.0" # for "ssr templating" with its `Document` struct. we don't use it as any framework.
+windmark = { version = "0.3.11", features = [
+    "logger",
+    "pretty_env_logger",
+    "auto-deduce-mime",
+] }
 
 # fixme: [`chrono::NaiveDateTime`] from postgresql `timestamp`s doesn't work?
 # chrono = { version = "0.4.38", default-features = false, features = [
