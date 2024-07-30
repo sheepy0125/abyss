@@ -16,5 +16,5 @@ pub fn handle_client_in_abyss(context: RouteContext) -> anyhow::Result<String> {
 
     log::debug!("handling client with id {id} in abyss");
 
-    todo!()
+    Ok("todo".into())
 }

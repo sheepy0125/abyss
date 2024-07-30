@@ -1,11 +1,15 @@
 //! Abyss
 
+use std::time::Duration;
+
 use crate::abyss::handle_client_in_abyss;
 use crate::consts::FOOTER;
 use crate::database::establish_connection;
 
 use components::certificate::require_certificate;
 use dotenvy::dotenv;
+use state::ClientState;
+use tokio::spawn;
 
 pub mod abyss;
 pub mod components;
@@ -29,8 +33,15 @@ async fn main() -> anyhow::Result<()> {
 
     let database_connection = establish_connection()?;
 
-    // todo: task to periodically prune old clients
+    // Periodically prune old clients
+    spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(60)).await; // xxx: debug
+            ClientState::prune_clients().unwrap();
+        }
+    });
 
+    // fixme: struct routers don't work in windmark? lol
     windmark::router::Router::new()
         .set_private_key_file("server.key")
         .set_certificate_file("server.crt")
