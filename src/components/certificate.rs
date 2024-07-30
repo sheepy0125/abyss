@@ -1,15 +1,20 @@
 use anyhow::Context;
-use openssl::{hash::MessageDigest, x509::X509};
+use openssl::{
+    hash::{DigestBytes, MessageDigest},
+    x509::X509,
+};
 use windmark::context::RouteContext;
 
-pub type CertHash = Vec<u8>;
+pub const CERT_HASH_LEN: usize = 64;
+pub type CertHash = Box<DigestBytes>;
 
 pub fn hash_certificate(cert: &X509) -> anyhow::Result<CertHash> {
     cert.digest(MessageDigest::sha512())
         .context("failed to hash certificate")
-        .map(|digest_bytes| digest_bytes.iter().copied().collect())
+        .map(Box::new)
 }
 
+/// Error with a certificate required response if a certificate is not present
 pub fn require_certificate(context: &RouteContext) -> Result<(), windmark::response::Response> {
     if context.certificate.is_none() {
         Err(

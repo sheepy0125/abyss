@@ -3,7 +3,7 @@
 use crate::consts::DATABASE_URL;
 use crate::tree::TreeBranch;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context};
 use diesel::{
     prelude::*,
     r2d2::{ConnectionManager, Pool, PooledConnection},
@@ -16,16 +16,20 @@ pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 pub type PooledPg = PooledConnection<ConnectionManager<PgConnection>>;
 
 /// Establish a pool and database connection from `DATABASE_URL`
-pub fn establish_connection() -> Result<PgPool> {
+pub fn establish_connection() -> anyhow::Result<PgPool> {
+    log::trace!("initializing database connection");
+
     let manager = ConnectionManager::<PgConnection>::new(DATABASE_URL.to_string());
+
     let pool = PgPool::builder()
         .max_size(10)
         .build(manager)
         .context("creating postgresql pool and ocnnection manager")?;
+
     Ok(pool)
 }
 
-#[derive(Queryable, Selectable, Serialize, Clone)]
+#[derive(Queryable, Selectable, Serialize, Clone, Debug)]
 #[diesel(table_name = crate::schema::cartas)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Carta {
@@ -43,20 +47,28 @@ pub struct Database {
 }
 impl Database {
     /// Fetch a carta from its ID
-    pub fn fetch(&mut self, id: i32) -> Result<Carta> {
+    pub fn fetch(&mut self, id: i32) -> anyhow::Result<Carta> {
+        log::trace!("fetching carta with id {id}");
+
         use crate::schema::cartas::dsl;
-        dsl::cartas
+        let carta = dsl::cartas
             .find(id)
             .get_result(&mut self.connection)
-            .with_context(|| anyhow!("fetching carta with id {id}"))
+            .with_context(|| anyhow!("fetching carta with id {id}"))?;
+
+        log::debug!("fetched carta with id {id}: {carta:?}");
+
+        Ok(carta)
     }
 
     /// Fetch a tree of all cartas from a carta ID
     /// fixme: currently untested. i don't know if this will work.
-    pub fn fetch_tree(&mut self, id: i32) -> Result<TreeBranch<Carta>> {
+    pub fn fetch_tree(&mut self, id: i32) -> anyhow::Result<TreeBranch<Carta>> {
         // fixme: this is quite an inefficient solution. we traverse to the top from
         // the starting id and *then* build the tree, not caching any results. more
         // database calls than necessary occur.
+
+        log::trace!("fetching tree off cartas from carta with id {id}");
 
         let mut current_node = self.fetch(id)?;
 
@@ -74,7 +86,9 @@ impl Database {
         let self_ref = RefCell::new(self);
         let traverse_downward = fix_fn!(|traverse_downward,
                                          branch: Rc<TreeBranch<Carta>>|
-         -> Result<()> {
+         -> anyhow::Result<()> {
+            log::trace!("traversing downwawrd from branch {branch:?}");
+
             for child in self_ref.borrow_mut().fetch_children(branch.node.id)? {
                 let child_branch = TreeBranch {
                     node: child,
@@ -88,17 +102,19 @@ impl Database {
                     .push(Rc::downgrade(&child_branch_ref));
                 traverse_downward(child_branch_ref)?;
             }
+
             Ok(())
         });
 
         let tree_ref = Rc::new(tree);
         traverse_downward(Rc::clone(&tree_ref))?;
+        log::trace!("tree: {tree_ref:?}");
 
         Rc::into_inner(tree_ref).context("tree had more than one ref")
     }
 
     /// Helper function to find all children of a parent
-    fn fetch_children(&mut self, id: i32) -> Result<Vec<Carta>> {
+    fn fetch_children(&mut self, id: i32) -> anyhow::Result<Vec<Carta>> {
         use crate::schema::cartas::dsl;
         dsl::cartas
             .filter(dsl::parent.eq(id))
