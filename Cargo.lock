@@ -12,6 +12,7 @@ dependencies = [
  "fix_fn",
  "lazy_static",
  "log",
+ "openssl",
  "pretty_env_logger",
  "rossweisse",
  "serde",
