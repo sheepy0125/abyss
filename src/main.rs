@@ -31,8 +31,6 @@ async fn main() -> anyhow::Result<()> {
     dotenv()?;
     pretty_env_logger::init();
 
-    let database_connection = establish_connection()?;
-
     // Periodically prune old clients
     spawn(async move {
         loop {

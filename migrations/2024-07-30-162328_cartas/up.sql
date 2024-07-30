@@ -12,7 +12,8 @@ create table cartas (
     -- modification timestamp
     -- fixme! `timestamp`s to [`chrono::NaiveDateTime`] doesn't meet trait bounds
     creation integer not null, -- unix timestamp
-    modification integer -- unix timestamp
+    modification integer, -- unix timestamp
+    random_accessible bool not null
 );
 
 create table users (

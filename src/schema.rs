@@ -13,6 +13,7 @@ diesel::table! {
         modification_code -> Bpchar,
         creation -> Int4,
         modification -> Nullable<Int4>,
+        random_accessible -> Bool,
     }
 }
 

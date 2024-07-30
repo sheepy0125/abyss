@@ -5,7 +5,20 @@ use windmark::context::RouteContext;
 
 #[derive(Default)]
 pub struct AbyssState {
-    cartas_loaded: Vec<(String, i32)>,
+    top_level_cartas_loaded: Vec<(String, i32)>,
+    currently: AbyssMode,
+}
+#[derive(Default, Clone)]
+pub enum AbyssMode {
+    #[default]
+    FetchingCartas,
+    ViewingCarta(i32),
+}
+
+pub fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String> {
+    let abyss_state = &mut client.abyss_state;
+
+    Ok("fetching cartas".into())
 }
 
 pub fn handle_client_in_abyss(context: RouteContext) -> anyhow::Result<String> {
@@ -21,5 +34,8 @@ pub fn handle_client_in_abyss(context: RouteContext) -> anyhow::Result<String> {
 
     log::debug!("handling client with id {id} in abyss");
 
-    Ok("todo".into())
+    match client.abyss_state.currently.clone() {
+        AbyssMode::FetchingCartas => handle_fetching_cartas(&mut client),
+        AbyssMode::ViewingCarta(id) => todo!("viewing carta"),
+    }
 }

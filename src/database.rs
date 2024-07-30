@@ -9,11 +9,25 @@ use diesel::{
     r2d2::{ConnectionManager, Pool, PooledConnection},
 };
 use fix_fn::fix_fn;
+use lazy_static::lazy_static;
 use serde::Serialize;
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 pub type PooledPg = PooledConnection<ConnectionManager<PgConnection>>;
+
+lazy_static! {
+    pub static ref DATABASE: Arc<Mutex<Database>> = Arc::new(Mutex::new(Database::new(
+        establish_connection()
+            .and_then(|pool| pool.get().context("getting pool connection"))
+            .expect("establish database connection")
+    )));
+}
 
 /// Establish a pool and database connection from `DATABASE_URL`
 pub fn establish_connection() -> anyhow::Result<PgPool> {
@@ -36,18 +50,87 @@ pub struct Carta {
     pub id: i32,
     pub user_id: Option<i32>,
     pub parent: Option<i32>,
+    pub title: Option<String>,     // max len: 24
     pub content: String,           // max len: 2048
     pub modification_code: String, // 6-digit pin
-    pub creation: i32,
+    pub creation: i32,             // unix timestamp
     pub modification: Option<i32>,
+    pub random_accessible: bool,
+}
+
+#[derive(Queryable, Selectable, Serialize, Clone, Debug)]
+#[diesel(table_name = crate::schema::users)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct User {
+    pub id: i32,
+    pub certificate_hash: Vec<u8>, // max len: [`crate::certificate::CERT_HASH_LEN`]
+    pub creation: i32,             // unix timestamp
+}
+#[derive(Insertable, Serialize, Clone, Debug)]
+#[diesel(table_name = crate::schema::users)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct UserUpdate {
+    pub certificate_hash: Vec<u8>,
+    pub creation: i32,
 }
 
 pub struct Database {
     pub connection: PooledPg,
 }
 impl Database {
+    pub fn new(connection: PooledPg) -> Self {
+        Self { connection }
+    }
+
+    /// Fetch a user from their certificate hash
+    pub fn fetch_user(&mut self, cert_hash: &[u8]) -> anyhow::Result<Option<User>> {
+        log::trace!("looking up user from cert hash");
+
+        use crate::schema::users::dsl;
+        let user = dsl::users
+            .filter(dsl::certificate_hash.eq(cert_hash))
+            .select(User::as_select())
+            .first(&mut self.connection)
+            .optional()
+            .with_context(|| anyhow!("fetching user by cert hash"))?;
+
+        match user {
+            Some(ref user) => log::trace!(
+                "user created on {creation} has id {id}",
+                id = user.id,
+                creation = user.creation
+            ),
+            None => log::trace!("certificate not found"),
+        }
+
+        Ok(user)
+    }
+
+    /// Insert a new user
+    pub fn insert_user(&mut self, cert_hash: &[u8]) -> anyhow::Result<User> {
+        log::trace!("inserting a new user");
+
+        let update = UserUpdate {
+            certificate_hash: cert_hash.to_vec(),
+            creation: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as _,
+        };
+
+        use crate::schema::users::dsl;
+        let user = update
+            .insert_into(dsl::users)
+            .returning(User::as_returning())
+            .get_result(&mut self.connection)?;
+
+        log::trace!("inserted user {id}", id = user.id);
+
+        Ok(user)
+    }
+
     /// Fetch a carta from its ID
-    pub fn fetch(&mut self, id: i32) -> anyhow::Result<Carta> {
+    pub fn fetch_carta(&mut self, id: i32) -> anyhow::Result<Carta> {
         log::trace!("fetching carta with id {id}");
 
         use crate::schema::cartas::dsl;
@@ -56,25 +139,25 @@ impl Database {
             .get_result(&mut self.connection)
             .with_context(|| anyhow!("fetching carta with id {id}"))?;
 
-        log::debug!("fetched carta with id {id}: {carta:?}");
+        log::trace!("fetched carta with id {id}: {carta:?}");
 
         Ok(carta)
     }
 
     /// Fetch a tree of all cartas from a carta ID
     /// fixme: currently untested. i don't know if this will work.
-    pub fn fetch_tree(&mut self, id: i32) -> anyhow::Result<TreeBranch<Carta>> {
+    pub fn fetch_carta_tree(&mut self, id: i32) -> anyhow::Result<TreeBranch<Carta>> {
         // fixme: this is quite an inefficient solution. we traverse to the top from
         // the starting id and *then* build the tree, not caching any results. more
         // database calls than necessary occur.
 
         log::trace!("fetching tree off cartas from carta with id {id}");
 
-        let mut current_node = self.fetch(id)?;
+        let mut current_node = self.fetch_carta(id)?;
 
         // Traverse to top of tree
         while let Some(parent_id) = current_node.parent {
-            current_node = self.fetch(parent_id)?;
+            current_node = self.fetch_carta(parent_id)?;
         }
         let tree = TreeBranch::<Carta> {
             node: current_node,
@@ -89,7 +172,7 @@ impl Database {
          -> anyhow::Result<()> {
             log::trace!("traversing downwawrd from branch {branch:?}");
 
-            for child in self_ref.borrow_mut().fetch_children(branch.node.id)? {
+            for child in self_ref.borrow_mut().fetch_carta_children(branch.node.id)? {
                 let child_branch = TreeBranch {
                     node: child,
                     parent: Some(Rc::downgrade(&branch)),
@@ -114,7 +197,7 @@ impl Database {
     }
 
     /// Helper function to find all children of a parent
-    fn fetch_children(&mut self, id: i32) -> anyhow::Result<Vec<Carta>> {
+    fn fetch_carta_children(&mut self, id: i32) -> anyhow::Result<Vec<Carta>> {
         use crate::schema::cartas::dsl;
         dsl::cartas
             .filter(dsl::parent.eq(id))

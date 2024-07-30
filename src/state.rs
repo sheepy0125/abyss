@@ -1,5 +1,6 @@
 use crate::abyss::AbyssState;
 use crate::components::certificate::{CertHash, CERT_HASH_LEN};
+use crate::database::DATABASE;
 
 use anyhow::{anyhow, Context};
 use lazy_static::lazy_static;
@@ -18,20 +19,26 @@ lazy_static! {
     pub static ref CLIENTS: Clients = Default::default();
 }
 
-pub static NEXT_CLIENT_ID: AtomicUsize = AtomicUsize::new(1);
-
 pub struct ClientState {
     creation: Instant,
     id: usize,
-    abyss_state: AbyssState,
+    pub abyss_state: AbyssState,
 }
-impl Default for ClientState {
-    fn default() -> Self {
-        Self {
+impl ClientState {
+    fn new(cert_hash: &[u8]) -> anyhow::Result<Self> {
+        let mut database_guard = DATABASE
+            .lock()
+            .map_err(|_| anyhow!("failed to lock database mutex"))?;
+
+        let user = database_guard
+            .fetch_user(cert_hash)?
+            .map_or_else(|| database_guard.insert_user(cert_hash), Ok)?;
+
+        Ok(Self {
             creation: Instant::now(),
-            id: NEXT_CLIENT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-            ..Default::default()
-        }
+            id: user.id as _,
+            abyss_state: AbyssState::default(),
+        })
     }
 }
 impl ClientState {
@@ -52,15 +59,14 @@ impl ClientState {
             .write()
             .map_err(|_| anyhow!("failed locking clients rwlock"))?;
 
-        let state = ClientState::default();
-        let id = state.id();
-        let wrapped_state = (id, Arc::new(Mutex::new(state)));
-
         let hash = {
             let mut heap_clone = [0u8; CERT_HASH_LEN];
             heap_clone.copy_from_slice(cert_hash);
             heap_clone
         };
+        let state = ClientState::new(&hash)?;
+        let id = state.id();
+        let wrapped_state = (id, Arc::new(Mutex::new(state)));
         guard.insert(hash, wrapped_state.clone());
 
         log::trace!("created a new client with id {id}");
