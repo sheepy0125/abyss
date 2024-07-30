@@ -5,6 +5,8 @@ diesel::table! {
         id -> Int4,
         parent -> Nullable<Int4>,
         user_id -> Nullable<Int4>,
+        #[max_length = 24]
+        title -> Nullable<Bpchar>,
         #[max_length = 2048]
         content -> Varchar,
         #[max_length = 6]
@@ -13,3 +15,16 @@ diesel::table! {
         modification -> Nullable<Int4>,
     }
 }
+
+diesel::table! {
+    users (id) {
+        id -> Int4,
+        certificate_hash -> Bytea,
+        creation -> Int4,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(
+    cartas,
+    users,
+);

@@ -1,3 +1,4 @@
+use crate::abyss::AbyssState;
 use crate::components::certificate::{CertHash, CERT_HASH_LEN};
 
 use anyhow::{anyhow, Context};
@@ -17,17 +18,19 @@ lazy_static! {
     pub static ref CLIENTS: Clients = Default::default();
 }
 
-pub static NEXT_CLIENT_ID: AtomicUsize = AtomicUsize::new(0);
+pub static NEXT_CLIENT_ID: AtomicUsize = AtomicUsize::new(1);
 
 pub struct ClientState {
     creation: Instant,
     id: usize,
+    abyss_state: AbyssState,
 }
 impl Default for ClientState {
     fn default() -> Self {
         Self {
             creation: Instant::now(),
             id: NEXT_CLIENT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            ..Default::default()
         }
     }
 }

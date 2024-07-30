@@ -1,7 +1,12 @@
+use crate::{components::certificate::hash_certificate, state::ClientState};
+
 use anyhow::{anyhow, Context};
 use windmark::context::RouteContext;
 
-use crate::{components::certificate::hash_certificate, state::ClientState};
+#[derive(Default)]
+pub struct AbyssState {
+    cartas_loaded: Vec<(String, i32)>,
+}
 
 pub fn handle_client_in_abyss(context: RouteContext) -> anyhow::Result<String> {
     let cert_hash = hash_certificate(&context.certificate.context("no certificate")?)?;
