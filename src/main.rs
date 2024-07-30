@@ -1,15 +1,14 @@
 //! Abyss
 
+use crate::components::pages::page_result_to_response;
+use crate::consts::FOOTER;
 use crate::database::establish_connection;
 
-use consts::FOOTER;
 use dotenvy::dotenv;
-use pages::page_result_to_response;
-use windmark::response::Response;
 
+pub mod components;
 pub mod consts;
 pub mod database;
-pub mod pages;
 pub mod schema;
 pub mod tree;
 
@@ -24,7 +23,9 @@ async fn main() -> anyhow::Result<()> {
         .set_certificate_file("server.crt")
         .enable_default_logger(true)
         .set_fix_path(true)
-        .mount("/", |c| page_result_to_response(pages::index::index(c)))
+        .mount("/", |c| {
+            page_result_to_response(components::pages::index::index(c))
+        })
         .add_footer(|_| FOOTER.to_string())
         .set_error_handler(|_context| {
             windmark::response::Response::not_found(
