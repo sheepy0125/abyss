@@ -55,6 +55,7 @@ pub struct Carta {
     pub modification_code: String, // 6-digit pin
     pub creation: i32,             // unix timestamp
     pub modification: Option<i32>,
+    pub lang: String,
     pub random_accessible: bool,
 }
 
@@ -64,13 +65,15 @@ pub struct Carta {
 pub struct User {
     pub id: i32,
     pub certificate_hash: Vec<u8>, // max len: [`crate::certificate::CERT_HASH_LEN`]
-    pub creation: i32,             // unix timestamp
+    pub lang: String,
+    pub creation: i32, // unix timestamp
 }
 #[derive(Insertable, Serialize, Clone, Debug)]
 #[diesel(table_name = crate::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct UserUpdate {
     pub certificate_hash: Vec<u8>,
+    pub lang: String,
     pub creation: i32,
 }
 
@@ -83,11 +86,15 @@ impl Database {
     }
 
     /// Fetch a random "random accessible" carta
-    pub fn fetch_random_carta<I>(&mut self, ignore_ids: I) -> anyhow::Result<Option<Carta>>
+    pub fn fetch_random_carta<I>(
+        &mut self,
+        languages: &[String],
+        ignore_ids: I,
+    ) -> anyhow::Result<Option<Carta>>
     where
         I: Iterator<Item = i32>,
     {
-        log::trace!("fetching a random carta");
+        log::trace!("fetching a random carta from languages {languages:?}");
 
         diesel::define_sql_function!(fn random() -> Text);
 
@@ -95,6 +102,7 @@ impl Database {
         let random_carta = dsl::cartas
             .filter(dsl::random_accessible.eq(true))
             .filter(dsl::id.ne_all(ignore_ids))
+            .filter(dsl::lang.eq_any(languages))
             .select(Carta::as_select())
             .order(random())
             .first(&mut self.connection)
@@ -128,7 +136,7 @@ impl Database {
     }
 
     /// Insert a new user
-    pub fn insert_user(&mut self, cert_hash: &[u8]) -> anyhow::Result<User> {
+    pub fn insert_user(&mut self, lang: String, cert_hash: &[u8]) -> anyhow::Result<User> {
         log::trace!("inserting a new user");
 
         let update = UserUpdate {
@@ -137,6 +145,7 @@ impl Database {
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs() as _,
+            lang,
         };
 
         use crate::schema::users::dsl;

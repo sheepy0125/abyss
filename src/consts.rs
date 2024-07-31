@@ -1,5 +1,7 @@
-/// Lazily loaded constants and regular constants.
+//! Lazily loaded constants and regular constants.
+
 use lazy_static::lazy_static;
+use std::path::PathBuf;
 
 macro_rules! from_environment {
     ($key:expr) => {
@@ -9,6 +11,11 @@ macro_rules! from_environment {
 
 lazy_static! {
     pub static ref DATABASE_URL: String = from_environment!("DATABASE_URL");
+    pub static ref I18N_DIR: PathBuf = std::env::current_dir()
+        .unwrap()
+        .join("i18n")
+        .canonicalize()
+        .expect("i18n directory not found");
 }
 
 pub const FOOTER: &str = r#"

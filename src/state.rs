@@ -1,6 +1,7 @@
 use crate::abyss::AbyssState;
 use crate::components::certificate::{CertHash, CERT_HASH_LEN};
 use crate::database::DATABASE;
+use crate::i18n::Lang;
 
 use anyhow::{anyhow, Context};
 use lazy_static::lazy_static;
@@ -23,21 +24,24 @@ pub struct ClientState {
     creation: Instant,
     id: usize,
     pub abyss_state: AbyssState,
+    pub lang: &'static Lang,
 }
 impl ClientState {
-    fn new(cert_hash: &[u8]) -> anyhow::Result<Self> {
+    fn new(cert_hash: &[u8], lang: &'static Lang) -> anyhow::Result<Self> {
         let mut database_guard = DATABASE
             .lock()
             .map_err(|_| anyhow!("failed to lock database mutex"))?;
 
-        let user = database_guard
-            .fetch_user(cert_hash)?
-            .map_or_else(|| database_guard.insert_user(cert_hash), Ok)?;
+        let user = database_guard.fetch_user(cert_hash)?.map_or_else(
+            || database_guard.insert_user(lang.code.clone(), cert_hash),
+            Ok,
+        )?;
 
         Ok(Self {
             creation: Instant::now(),
             id: user.id as _,
-            abyss_state: AbyssState::default(),
+            abyss_state: AbyssState::new(lang),
+            lang,
         })
     }
 }
@@ -52,7 +56,10 @@ impl ClientState {
 
 impl ClientState {
     /// Create a new client
-    pub fn init_state(cert_hash: &CertHash) -> anyhow::Result<(usize, Arc<Mutex<Self>>)> {
+    pub fn init_state(
+        cert_hash: &CertHash,
+        lang: &'static Lang,
+    ) -> anyhow::Result<(usize, Arc<Mutex<Self>>)> {
         log::trace!("creating a new client");
 
         let mut guard = CLIENTS
@@ -64,7 +71,7 @@ impl ClientState {
             heap_clone.copy_from_slice(cert_hash);
             heap_clone
         };
-        let state = ClientState::new(&hash)?;
+        let state = ClientState::new(&hash, lang)?;
         let id = state.id();
         let wrapped_state = (id, Arc::new(Mutex::new(state)));
         guard.insert(hash, wrapped_state.clone());

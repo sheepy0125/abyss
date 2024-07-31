@@ -1,20 +1,21 @@
 //! Abyss
 
-use std::time::Duration;
-
 use crate::abyss::handle_client_in_abyss;
 use crate::consts::FOOTER;
-use crate::database::establish_connection;
+use crate::i18n::{lookup_lang_from_code, Lang};
 
 use components::certificate::require_certificate;
 use dotenvy::dotenv;
 use state::ClientState;
+use std::time::Duration;
 use tokio::spawn;
+use windmark::context::RouteContext;
 
 pub mod abyss;
 pub mod components;
 pub mod consts;
 pub mod database;
+pub mod i18n;
 pub mod schema;
 pub mod state;
 pub mod tree;
@@ -33,6 +34,21 @@ pub fn windmark_response_result_to_response(
         Err(e) => windmark::response::Response::temporary_failure(format!("error! {e}")),
     }
 }
+pub fn get_lang(context: &RouteContext) -> Option<&'static Lang> {
+    context
+        .parameters
+        .get("lang")
+        .and_then(|str_ref| lookup_lang_from_code(str_ref))
+}
+
+macro_rules! lang {
+    ($context:expr) => {
+        match get_lang(&$context) {
+            Some(lang) => lang,
+            None => return windmark::response::Response::temporary_redirect("/en"),
+        }
+    };
+}
 
 #[windmark::main]
 async fn main() -> anyhow::Result<()> {
@@ -47,34 +63,35 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
+    let index_handle = |context| {
+        let lang = lang!(context);
+        result_to_response(components::pages::index::index(context, lang))
+    };
     let abyss_handle = |context| {
-        if let Err(resp) = require_certificate(&context) {
+        let lang = lang!(context);
+        if let Err(resp) = require_certificate(&context, lang) {
             return resp;
         };
         windmark_response_result_to_response(handle_client_in_abyss(context))
     };
 
-    // fixme: struct routers don't work in windmark? lol
     windmark::router::Router::new()
         .set_private_key_file("server.key")
         .set_certificate_file("server.crt")
         .enable_default_logger(false)
-        .set_fix_path(true)
+        .set_fix_path(false)
         // index
-        .mount("/", |c| {
-            // page_result_to_response(components::pages::index::index(c))
-            result_to_response(components::text_input::text_input(c)) // testing
-        })
+        .mount("/", index_handle)
+        .mount("/:lang", index_handle)
+        .mount("/:lang/", index_handle)
         // abyss
-        .mount("/abyss/", abyss_handle)
-        .mount("/abyss/:state", abyss_handle)
+        .mount("/:lang/abyss", abyss_handle)
+        .mount("/:lang/abyss/", abyss_handle)
+        .mount("/:lang/abyss/:state", abyss_handle)
+        .mount("/:lang/abyss/:state/", abyss_handle)
         .add_footer(|_| FOOTER.to_string())
         // route unmatched
-        .set_error_handler(|_context| {
-            windmark::response::Response::not_found(
-                "you made a wrong turn, my friend. route not found.",
-            )
-        })
+        .set_error_handler(|_context| windmark::response::Response::temporary_redirect("/"))
         .run()
         .await
         .map_err(|e| anyhow::anyhow!("router failed: {e}"))?;

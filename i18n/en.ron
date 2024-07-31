@@ -1,0 +1,13 @@
+(
+code: "en",
+
+cert_required: "A certificate is required to maintain state. Please create or choose a certificate. Proxies to HTTP and other clients without certificate support will not function.",
+
+// index
+index_header: "Welcome to the Abyss",
+
+// abyss
+fetch_header: "You're on the surface of the Abyss",
+fetch: "Take a peek?",
+no_new_cartas: "You've read them all, my friend.",
+)

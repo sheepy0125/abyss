@@ -13,6 +13,8 @@ diesel::table! {
         modification_code -> Bpchar,
         creation -> Int4,
         modification -> Nullable<Int4>,
+        #[max_length = 2]
+        lang -> Bpchar,
         random_accessible -> Bool,
     }
 }
@@ -21,6 +23,8 @@ diesel::table! {
     users (id) {
         id -> Int4,
         certificate_hash -> Bytea,
+        #[max_length = 2]
+        lang -> Bpchar,
         creation -> Int4,
     }
 }
