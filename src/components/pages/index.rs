@@ -6,5 +6,6 @@ use windmark::context::RouteContext;
 pub fn index(context: RouteContext, lang: &'static Lang) -> anyhow::Result<String> {
     Ok(Document::new()
         .add_heading(HeadingLevel::H1, &lang.index_header)
+        .add_link("abyss/", "Enter")
         .to_string())
 }

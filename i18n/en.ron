@@ -8,6 +8,7 @@ index_header: "Welcome to the Abyss",
 
 // abyss
 fetch_header: "You're on the surface of the Abyss",
-fetch: "Take a peek?",
-no_new_cartas: "You've read them all, my friend.",
+fetch_link: "Take a peek?",
+write_link: "Yell into the abyss?",
+no_new_cartas_status: "You've read them all, my friend.",
 )

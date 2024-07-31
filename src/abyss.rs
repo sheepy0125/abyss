@@ -5,7 +5,6 @@ use crate::{
     database::DATABASE,
     get_lang,
     i18n::{Lang, ENGLISH},
-    lookup_lang_from_code,
     state::ClientState,
 };
 
@@ -13,19 +12,20 @@ use anyhow::{anyhow, Context};
 use twinstar::{document::HeadingLevel, Document};
 use windmark::context::RouteContext;
 
+#[derive(Default)]
 pub struct AbyssState {
-    top_level_cartas_loaded: VecDeque<(String, i32)>,
-    currently: AbyssMode,
-    to_flash: Option<String>,
-    languages: Vec<String>,
+    pub top_level_cartas_loaded: VecDeque<(String, i32)>,
+    pub currently: AbyssMode,
+    pub to_flash: Option<String>,
+    pub languages: Vec<String>,
+    pub lines: Vec<String>,
+    pub show_writing_help: bool,
 }
 impl AbyssState {
     pub fn new(lang: &Lang) -> Self {
         Self {
-            top_level_cartas_loaded: VecDeque::new(),
-            currently: AbyssMode::default(),
-            to_flash: None,
             languages: vec![lang.code.clone()],
+            ..Default::default()
         }
     }
 }
@@ -34,6 +34,7 @@ impl AbyssState {
 pub enum AbyssMode {
     #[default]
     FetchingCartas,
+    WritingCarta,
     ViewingCarta(i32),
 }
 
@@ -67,11 +68,33 @@ fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String> {
     // Fetch UI
     let fetch_ui = Document::new()
         .add_heading(HeadingLevel::H2, &client.lang.fetch_header)
-        .add_link("?peek", &client.lang.fetch)
+        .add_link("peek", &client.lang.fetch_link)
+        .add_link("write", &client.lang.write_link)
         .to_string();
 
     #[allow(clippy::useless_format)]
     Ok(format!("{fetch_ui}"))
+}
+
+fn handle_peek(client: &mut ClientState) -> anyhow::Result<()> {
+    client.abyss_state.currently = AbyssMode::FetchingCartas;
+    match fetch_random_carta(client)? {
+        Some(carta) => {
+            client.abyss_state.top_level_cartas_loaded.push_front(carta);
+        }
+        None => {
+            client.abyss_state.to_flash = Some(client.lang.no_new_cartas_status.clone());
+        }
+    };
+    Ok(())
+}
+
+fn handle_write(client: &mut ClientState) -> anyhow::Result<String> {
+    if !matches!(client.abyss_state.currently, AbyssMode::WritingCarta) {
+        client.abyss_state.lines.clear();
+    }
+    client.abyss_state.currently = AbyssMode::WritingCarta;
+    Ok("".to_string())
 }
 
 pub fn handle_client_in_abyss(
@@ -89,9 +112,10 @@ pub fn handle_client_in_abyss(
     let mut client = client
         .lock()
         .map_err(|_| anyhow!("failed to lock client mutex"))?;
+    client.poke();
     if lang.is_none() {
         return Ok(windmark::response::Response::permanent_redirect(format!(
-            "{lang}/abyss",
+            "/{lang}/abyss",
             lang = client.lang.code
         )));
     }
@@ -106,20 +130,19 @@ pub fn handle_client_in_abyss(
         .map(|str_ref| str_ref.as_str())
     {
         Some("peek") => {
-            client.abyss_state.currently = AbyssMode::FetchingCartas;
-            match fetch_random_carta(&client)? {
-                Some(carta) => {
-                    client.abyss_state.top_level_cartas_loaded.push_front(carta);
-                }
-                None => {
-                    client.abyss_state.to_flash = Some(client.lang.no_new_cartas.clone());
-                }
-            };
+            handle_peek(&mut client)?;
+            true
+        }
+        Some("write") => {
+            handle_write(&mut client)?;
             true
         }
         _unknown_or_none => false,
     } {
-        return Ok(windmark::response::Response::temporary_redirect("/abyss"));
+        return Ok(windmark::response::Response::temporary_redirect(format!(
+            "/{lang}/abyss/",
+            lang = client.lang.code
+        )));
     }
 
     let flash = match client.abyss_state.to_flash {
@@ -134,6 +157,7 @@ pub fn handle_client_in_abyss(
     let body = match client.abyss_state.currently.clone() {
         AbyssMode::FetchingCartas => handle_fetching_cartas(&mut client)?,
         AbyssMode::ViewingCarta(id) => todo!("viewing carta"),
+        AbyssMode::WritingCarta => handle_write(&mut client)?,
     };
     Ok(windmark::response::Response::success(format!(
         "{flash}{body}"

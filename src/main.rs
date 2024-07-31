@@ -45,7 +45,7 @@ macro_rules! lang {
     ($context:expr) => {
         match get_lang(&$context) {
             Some(lang) => lang,
-            None => return windmark::response::Response::temporary_redirect("/en"),
+            None => return windmark::response::Response::temporary_redirect("/en/"),
         }
     };
 }
@@ -91,7 +91,9 @@ async fn main() -> anyhow::Result<()> {
         .mount("/:lang/abyss/:state/", abyss_handle)
         .add_footer(|_| FOOTER.to_string())
         // route unmatched
-        .set_error_handler(|_context| windmark::response::Response::temporary_redirect("/"))
+        .set_error_handler(|_context| {
+            windmark::response::Response::temporary_failure("route unmatched")
+        })
         .run()
         .await
         .map_err(|e| anyhow::anyhow!("router failed: {e}"))?;

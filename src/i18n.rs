@@ -11,9 +11,10 @@ pub struct Lang {
     // index
     pub index_header: String,
     // abyss
-    pub fetch: String,
     pub fetch_header: String,
-    pub no_new_cartas: String,
+    pub fetch_link: String,
+    pub write_link: String,
+    pub no_new_cartas_status: String,
 }
 
 // Dynamic parsing: Load file at runtime with runtime errors
