@@ -82,6 +82,27 @@ impl Database {
         Self { connection }
     }
 
+    /// Fetch a random "random accessible" carta
+    pub fn fetch_random_carta<I>(&mut self, ignore_ids: I) -> anyhow::Result<Option<Carta>>
+    where
+        I: Iterator<Item = i32>,
+    {
+        log::trace!("fetching a random carta");
+
+        diesel::define_sql_function!(fn random() -> Text);
+
+        use crate::schema::cartas::dsl;
+        let random_carta = dsl::cartas
+            .filter(dsl::random_accessible.eq(true))
+            .filter(dsl::id.ne_all(ignore_ids))
+            .select(Carta::as_select())
+            .order(random())
+            .first(&mut self.connection)
+            .optional()?;
+
+        Ok(random_carta)
+    }
+
     /// Fetch a user from their certificate hash
     pub fn fetch_user(&mut self, cert_hash: &[u8]) -> anyhow::Result<Option<User>> {
         log::trace!("looking up user from cert hash");

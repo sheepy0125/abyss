@@ -25,6 +25,14 @@ pub fn result_to_response(result: anyhow::Result<String>) -> windmark::response:
         Err(e) => windmark::response::Response::temporary_failure(format!("error! {e}")),
     }
 }
+pub fn windmark_response_result_to_response(
+    result: anyhow::Result<windmark::response::Response>,
+) -> windmark::response::Response {
+    match result {
+        Ok(res) => res,
+        Err(e) => windmark::response::Response::temporary_failure(format!("error! {e}")),
+    }
+}
 
 #[windmark::main]
 async fn main() -> anyhow::Result<()> {
@@ -39,6 +47,13 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
+    let abyss_handle = |context| {
+        if let Err(resp) = require_certificate(&context) {
+            return resp;
+        };
+        windmark_response_result_to_response(handle_client_in_abyss(context))
+    };
+
     // fixme: struct routers don't work in windmark? lol
     windmark::router::Router::new()
         .set_private_key_file("server.key")
@@ -51,12 +66,8 @@ async fn main() -> anyhow::Result<()> {
             result_to_response(components::text_input::text_input(c)) // testing
         })
         // abyss
-        .mount("/abyss", |context| {
-            if let Err(resp) = require_certificate(&context) {
-                return resp;
-            };
-            result_to_response(handle_client_in_abyss(context))
-        })
+        .mount("/abyss/", abyss_handle)
+        .mount("/abyss/:state", abyss_handle)
         .add_footer(|_| FOOTER.to_string())
         // route unmatched
         .set_error_handler(|_context| {
