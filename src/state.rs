@@ -7,21 +7,21 @@ use anyhow::{anyhow, Context};
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,
-    sync::{atomic::AtomicUsize, Arc, Mutex, RwLock},
+    sync::{Arc, Mutex, RwLock},
     time::{Duration, Instant},
 };
 
 pub type ClientLookup = HashMap<[u8; CERT_HASH_LEN], (usize, Arc<Mutex<ClientState>>)>;
 pub type Clients = Arc<RwLock<ClientLookup>>;
 
-pub const PRUNE_TIME: Duration = Duration::from_secs(10); // xxx: debug
+pub const PRUNE_TIME: Duration = Duration::from_secs(60 * 60); // 1 hour
 
 lazy_static! {
     pub static ref CLIENTS: Clients = Default::default();
 }
 
 pub struct ClientState {
-    creation: Instant,
+    keepalive: Instant,
     id: usize,
     pub abyss_state: AbyssState,
     pub lang: &'static Lang,
@@ -38,7 +38,7 @@ impl ClientState {
         )?;
 
         Ok(Self {
-            creation: Instant::now(),
+            keepalive: Instant::now(),
             id: user.id as _,
             abyss_state: AbyssState::new(lang),
             lang,
@@ -46,8 +46,11 @@ impl ClientState {
     }
 }
 impl ClientState {
-    pub fn creation(&self) -> &Instant {
-        &(self.creation)
+    pub fn poke(&mut self) {
+        self.keepalive = Instant::now();
+    }
+    pub fn keeaplive(&self) -> &Instant {
+        &(self.keepalive)
     }
     pub fn id(&self) -> usize {
         self.id
@@ -112,7 +115,7 @@ impl ClientState {
                 let guard = client
                     .lock()
                     .map_err(|_| anyhow!("failed to lock client mutex"))?;
-                let lifetime = guard.creation().elapsed();
+                let lifetime = guard.keeaplive().elapsed();
                 Ok(if lifetime > PRUNE_TIME {
                     log::trace!(
                         "client with id {id} has a lifetime of {lifetime}s. pruning",

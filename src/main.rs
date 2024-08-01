@@ -1,11 +1,15 @@
 //! Abyss
 
+#![feature(maybe_uninit_uninit_array)]
+#![feature(str_from_raw_parts)]
+
 use crate::abyss::handle_client_in_abyss;
 use crate::consts::FOOTER;
 use crate::i18n::{lookup_lang_from_code, Lang};
 
 use components::certificate::require_certificate;
 use dotenvy::dotenv;
+use i18n::ensure_lazily_loaded_languages_work;
 use state::ClientState;
 use std::time::Duration;
 use tokio::spawn;
@@ -45,13 +49,14 @@ macro_rules! lang {
     ($context:expr) => {
         match get_lang(&$context) {
             Some(lang) => lang,
-            None => return windmark::response::Response::temporary_redirect("/en"),
+            None => return windmark::response::Response::temporary_redirect("/en/"),
         }
     };
 }
 
 #[windmark::main]
 async fn main() -> anyhow::Result<()> {
+    ensure_lazily_loaded_languages_work();
     dotenv()?;
     pretty_env_logger::init();
 
@@ -91,7 +96,9 @@ async fn main() -> anyhow::Result<()> {
         .mount("/:lang/abyss/:state/", abyss_handle)
         .add_footer(|_| FOOTER.to_string())
         // route unmatched
-        .set_error_handler(|_context| windmark::response::Response::temporary_redirect("/"))
+        .set_error_handler(|_context| {
+            windmark::response::Response::temporary_failure("route unmatched")
+        })
         .run()
         .await
         .map_err(|e| anyhow::anyhow!("router failed: {e}"))?;

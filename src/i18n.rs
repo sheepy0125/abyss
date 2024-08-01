@@ -11,9 +11,13 @@ pub struct Lang {
     // index
     pub index_header: String,
     // abyss
-    pub fetch: String,
     pub fetch_header: String,
-    pub no_new_cartas: String,
+    pub fetch_link: String,
+    pub no_new_cartas_status: String,
+    pub write_header: String,
+    pub write_link: String,
+    pub write_return: String,
+    pub write_new_line: String,
 }
 
 // Dynamic parsing: Load file at runtime with runtime errors
@@ -34,4 +38,8 @@ pub fn lookup_lang_from_code(code: &str) -> Option<&'static Lang> {
         "en" => Some(&ENGLISH),
         _ => None,
     }
+}
+
+pub fn ensure_lazily_loaded_languages_work() {
+    assert!("en" == &ENGLISH.code);
 }
