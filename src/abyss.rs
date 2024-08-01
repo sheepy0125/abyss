@@ -8,8 +8,8 @@ use crate::{
 
 use anyhow::{anyhow, Context};
 use lazy_static::lazy_static;
-use std::{borrow::Cow, collections::VecDeque, mem::MaybeUninit};
-use twinstar::{document::HeadingLevel, Document, URIReference};
+use std::collections::VecDeque;
+use twinstar::{document::HeadingLevel, Document};
 use windmark::context::RouteContext;
 
 pub const MAX_LINE_LEN: usize = 256;
@@ -18,17 +18,12 @@ pub const MAX_NUM_LINES: usize = 50;
 lazy_static! {
     // Twinstar's [`twinstar::Document`] type only allows URIs added through
     // [`Document::add_link`] to have a 'static lifetime.
-    pub static ref WRITE_CHANGE_LINKS_LOOKUP_FROM_LINE_NUMBER: Vec<&'static mut &'static str> = {
-        // xxx: what the fuck?
-        let mut buf = Box::new(MaybeUninit::uninit_array::<MAX_NUM_LINES>());
-        buf.iter_mut().enumerate().for_each(|(idx, ele)| *ele = MaybeUninit::new(format!("write-{idx}")));
-        let buf = Box::leak(buf);
-        unsafe {
-            buf.iter().map(|init| {
-                let len = init.assume_init_ref().len();
-                Box::leak(Box::new(std::str::from_raw_parts(init.assume_init_ref().as_ptr(), len)))
-            }).collect()
-        }
+    pub static ref WRITE_CHANGE_LINKS_LOOKUP_FROM_LINE_NUMBER: Vec<&'static str> = {
+        (0..MAX_NUM_LINES)
+            .map(|n| {
+                &*Box::leak(format!("write-{n}").into_boxed_str())
+            })
+            .collect()
     };
 }
 
@@ -135,7 +130,7 @@ fn handle_writing_carta(client: &mut ClientState) -> anyhow::Result<String> {
             " ".repeat(PAD - digit_count)
         };
         document.add_link(
-            *WRITE_CHANGE_LINKS_LOOKUP_FROM_LINE_NUMBER[line_number],
+            WRITE_CHANGE_LINKS_LOOKUP_FROM_LINE_NUMBER[line_number],
             match line_number {
                 _filled_lines if (0..client.abyss_state.lines.len()).contains(&_filled_lines) => {
                     format!(
