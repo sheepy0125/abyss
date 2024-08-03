@@ -13,6 +13,10 @@ no_new_cartas_status: "You've read them all, my friend.",
 
 write_header: "You're yelling into the Abyss",
 write_link: "Yell into the abyss?",
-write_return: "Climb out",
-write_new_line: "(new line)",
+write_help_link: "Confused?",
+write_help_status: "Here resides a text editor! Each line is a link labeled with its line number in square brackets. Click on a line to replace its contents. Lines listed as \"(new line)\" are shown only ephemerally for editing.",
+write_return_link: "Climb out",
+write_new_line_link: "(new line)",
+write_new_line_input: "Enter the text for this line or a blank SPACE to cancel",
+
 )

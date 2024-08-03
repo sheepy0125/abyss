@@ -16,8 +16,11 @@ pub struct Lang {
     pub no_new_cartas_status: String,
     pub write_header: String,
     pub write_link: String,
-    pub write_return: String,
-    pub write_new_line: String,
+    pub write_help_link: String,
+    pub write_help_status: String,
+    pub write_return_link: String,
+    pub write_new_line_link: String,
+    pub write_new_line_input: String,
 }
 
 // Dynamic parsing: Load file at runtime with runtime errors
