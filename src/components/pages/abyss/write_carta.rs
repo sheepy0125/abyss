@@ -29,7 +29,7 @@ pub fn handle_writing_carta(client: &mut ClientState) -> anyhow::Result<String> 
     for idx in 0..((client.abyss_state.write_state.lines.len() + 1).min(MAX_NUM_LINES)) {
         let line_number = idx + 1;
         /* Right-aligned padding for line numbers, such as:
-         *  [1] lorem ispum
+         * [ 1] lorem ispum
          * [10] hello world */
         let padding = {
             let pad: usize = 1 + (client.abyss_state.write_state.lines.len() >= 10) as usize;
