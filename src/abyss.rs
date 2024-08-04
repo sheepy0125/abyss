@@ -30,13 +30,20 @@ pub struct AbyssState {
     pub currently: AbyssMode,
     pub to_flash: Vec<String>,
     pub languages: Vec<String>,
+    pub write_state: AbyssWriteState,
+}
+#[derive(Default)]
+pub struct AbyssWriteState {
     pub lines: Vec<String>,
-    pub show_writing_help: bool,
+    pub hide_line_numbers: bool,
+    pub title: Option<String>,
+    pub from: Option<String>,
 }
 impl AbyssState {
     pub fn new(lang: &Lang) -> Self {
         Self {
             languages: vec![lang.code.clone()],
+            // lines: ["a"; 50].iter().map(|s| (*s).to_string()).collect(), // debug
             ..Default::default()
         }
     }
@@ -104,43 +111,44 @@ fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String> {
 
 fn handle_writing_carta(client: &mut ClientState) -> anyhow::Result<String> {
     if !matches!(client.abyss_state.currently, AbyssMode::WritingCarta) {
-        client.abyss_state.lines.clear();
+        client.abyss_state.write_state.lines.clear();
     }
     client.abyss_state.currently = AbyssMode::WritingCarta;
 
     let mut document = Document::new();
     document
         .add_heading(HeadingLevel::H2, &client.lang.write_header)
-        .add_blank_line();
-    for idx in 0..=client.abyss_state.lines.len() {
+        .add_blank_line()
+        .add_heading(HeadingLevel::H3, &client.lang.write_body_header);
+    for idx in 0..((client.abyss_state.write_state.lines.len() + 1).min(MAX_NUM_LINES)) {
         let line_number = idx + 1;
         /* Right-aligned padding for line numbers, such as:
          *  [1] lorem ispum
          * [10] hello world */
         let padding = {
-            const PAD: usize = 2;
-            let digit_count = {
-                let mut n = line_number;
-                let mut count = 1;
-                while n > 10 {
-                    n /= 10;
-                    count += 1;
-                }
-                count
-            };
-            " ".repeat(PAD - digit_count)
+            let pad: usize = 1 + (client.abyss_state.write_state.lines.len() >= 10) as usize;
+            let digit_count = 1 + (line_number >= 10) as usize;
+            " ".repeat(pad - digit_count)
+        };
+        let line_number_formatted = if !client.abyss_state.write_state.hide_line_numbers {
+            &format!("[{padding}{line_number}]")
+        } else {
+            ""
         };
         document.add_link(
             WRITE_CHANGE_LINKS_LOOKUP_FROM_LINE_NUMBER[line_number],
             match line_number {
-                _filled_lines if (1..=client.abyss_state.lines.len()).contains(&_filled_lines) => {
+                _filled_lines
+                    if (1..=client.abyss_state.write_state.lines.len())
+                        .contains(&_filled_lines) =>
+                {
                     format!(
-                        "{padding}[{line_number}] {line}",
-                        line = &client.abyss_state.lines[idx]
+                        "{line_number_formatted} {line}",
+                        line = &client.abyss_state.write_state.lines[idx]
                     )
                 }
                 _new_line => format!(
-                    "{padding}[{line_number}] {}",
+                    "{line_number_formatted} {}",
                     client.lang.write_new_line_link
                 ),
             },
@@ -148,8 +156,45 @@ fn handle_writing_carta(client: &mut ClientState) -> anyhow::Result<String> {
     }
     document
         .add_blank_line()
+        .add_heading(HeadingLevel::H3, &client.lang.write_head_header);
+    document.add_link(
+        "title",
+        format!(
+            "{title_text}: {title}",
+            title_text = &client.lang.write_title_header,
+            title = client
+                .abyss_state
+                .write_state
+                .title
+                .as_deref()
+                .unwrap_or(&client.lang.write_untitled_sentinel),
+        ),
+    );
+    document.add_link(
+        "from",
+        format!(
+            "{from_text}: {from}",
+            from_text = &client.lang.write_from_header,
+            from = client
+                .abyss_state
+                .write_state
+                .from
+                .as_deref()
+                .unwrap_or(&client.lang.write_from_sentinel),
+        ),
+    );
+    document
+        .add_blank_line()
         .add_link("help", &client.lang.write_help_link)
         .add_link("fetch", &client.lang.write_return_link);
+    document.add_link(
+        "toggle-line-numbers",
+        if !client.abyss_state.write_state.hide_line_numbers {
+            &client.lang.write_hide_line_numbers_link
+        } else {
+            &client.lang.write_show_line_numbers_link
+        },
+    );
 
     Ok(document.to_string())
 }
@@ -159,46 +204,70 @@ fn handle_write_line(
     line_number: usize,
 ) -> anyhow::Result<windmark::response::Response> {
     log::trace!(
-        "client with id {id} is writing line on url {url:?}",
+        "client with id {id} is writing on line {line_number}",
         id = client.id(),
-        url = context.url
     );
 
     // User input
     if let Some(query) = context.url.query() {
         let query = decode(query).context("malformed uri encoding for query, expected utf-8")?;
+        let query = query.trim();
+
+        if line_number > client.abyss_state.write_state.lines.len() + 1 {
+            Err(anyhow!("invalid line number"))?;
+        }
 
         // Empty to cancel
-        if query.trim().is_empty() {
-            return Ok(windmark::response::Response::temporary_redirect(format!(
-                "/{lang}/abyss/",
-                lang = &client.lang.code,
-            )));
+        if query.is_empty() {
+            return client.redirect_to_abyss();
+        }
+
+        // Delete command
+        if query == client.lang.write_delete_command {
+            client.abyss_state.write_state.lines.remove(line_number - 1);
+            return client.redirect_to_abyss();
         }
 
         // New line
-        if line_number == client.abyss_state.lines.len() + 1 {
-            client.abyss_state.lines.push(String::new());
+        if line_number == client.abyss_state.write_state.lines.len() + 1 {
+            client.abyss_state.write_state.lines.push(String::new());
         }
 
-        let line = client
-            .abyss_state
-            .lines
-            .get_mut(line_number - 1)
-            .context("invalid line number")?;
+        let line = &mut client.abyss_state.write_state.lines[line_number - 1];
+        // fixme: validate
         *line = query.to_string();
 
-        return Ok(windmark::response::Response::temporary_redirect(format!(
-            "/{lang}/abyss/",
-            lang = &client.lang.code,
-        )));
+        return client.redirect_to_abyss();
     }
 
-    return Ok(windmark::response::Response::input(
+    Ok(windmark::response::Response::input(
         &client.lang.write_new_line_input,
-    ));
+    ))
+}
+fn handle_change_field(
+    // Workaround for requiring a mutable borrow for the field
+    client: &mut ClientState,
+    field: &mut Option<String>,
+    context: &RouteContext,
+) -> anyhow::Result<windmark::response::Response> {
+    log::trace!("client with id {id} is changing a field", id = client.id());
 
-    todo!()
+    // User input
+    if let Some(query) = context.url.query() {
+        // Delete command
+        if query == client.lang.write_delete_command {
+            *field = None;
+            return client.redirect_to_abyss();
+        }
+
+        // fixme: validate
+        *field = Some(decode(query).context("malformed input")?.to_string());
+        return client.redirect_to_abyss();
+    }
+
+    Ok(windmark::response::Response::input(
+        &client.lang.write_new_field,
+    ))
 }
 
 pub fn handle_client_in_abyss(
@@ -218,10 +287,7 @@ pub fn handle_client_in_abyss(
         .map_err(|_| anyhow!("failed to lock client mutex"))?;
     client.poke();
     if lang.is_none() {
-        return Ok(windmark::response::Response::permanent_redirect(format!(
-            "/{lang}/abyss",
-            lang = client.lang.code
-        )));
+        return client.redirect_to_abyss();
     }
     client.lang = lang.unwrap_or_else(|| &ENGLISH);
 
@@ -236,6 +302,18 @@ pub fn handle_client_in_abyss(
         match state {
             "fetch" => client.abyss_state.currently = AbyssMode::FetchingCartas,
             "peek" => client.abyss_state.currently = handle_peek_state_change(&mut client)?,
+            "from" => {
+                // "totally safe"
+                let field =
+                    unsafe { &mut *std::ptr::addr_of_mut!(client.abyss_state.write_state.from) };
+                return handle_change_field(&mut client, field, &context);
+            }
+            "title" => {
+                // "totally safe"
+                let field =
+                    unsafe { &mut *std::ptr::addr_of_mut!(client.abyss_state.write_state.title) };
+                return handle_change_field(&mut client, field, &context);
+            }
             "write" => client.abyss_state.currently = AbyssMode::WritingCarta,
             write_line if state.starts_with("write") => {
                 let line_number = write_line.trim_start_matches("write-").parse::<usize>()?;
@@ -243,18 +321,22 @@ pub fn handle_client_in_abyss(
                     .checked_sub(1)
                     .context("line number underflow")?
                     + 1;
+                if line_number > MAX_NUM_LINES {
+                    Err(anyhow!("invalid line number"))?;
+                }
                 return handle_write_line(&mut client, &context, line_number);
             }
             "help" => {
                 let flash = client.lang.write_help_status.clone();
                 client.abyss_state.to_flash.push(flash)
             }
+            "toggle-line-numbers" => {
+                client.abyss_state.write_state.hide_line_numbers =
+                    !client.abyss_state.write_state.hide_line_numbers;
+            }
             _ => (),
         };
-        return Ok(windmark::response::Response::temporary_redirect(format!(
-            "/{lang}/abyss/",
-            lang = client.lang.code
-        )));
+        return client.redirect_to_abyss();
     }
 
     let mut flash_document = Document::new();
@@ -263,7 +345,6 @@ pub fn handle_client_in_abyss(
             .add_heading(HeadingLevel::H3, flash)
             .add_blank_line();
     }
-
     let body = match client.abyss_state.currently {
         AbyssMode::FetchingCartas => handle_fetching_cartas(&mut client)?,
         AbyssMode::WritingCarta => handle_writing_carta(&mut client)?,

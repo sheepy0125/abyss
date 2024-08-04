@@ -5,6 +5,7 @@ cert_required: "A certificate is required to maintain state. Please create or ch
 
 // index
 index_header: "Welcome to the Abyss",
+abyss_enter_link: "Enter?",
 
 // abyss
 fetch_header: "You're on the surface of the Abyss",
@@ -12,11 +13,20 @@ fetch_link: "Take a peek?",
 no_new_cartas_status: "You've read them all, my friend.",
 
 write_header: "You're yelling into the Abyss",
+write_body_header: "Body",
+write_head_header: "Head",
+write_title_header: "Title",
+write_from_header: "From",
 write_link: "Yell into the abyss?",
 write_help_link: "Confused?",
-write_help_status: "Here resides a text editor! Each line is a link labeled with its line number in square brackets. Click on a line to replace its contents. Lines listed as \"(new line)\" are shown only ephemerally for editing.",
+write_help_status: "Here resides a text editor! Each line is a link labeled with its line number in square brackets. Click on a line to replace its contents. Lines listed as \"(new line)\" are shown only ephemerally for editing. Enter \"/delete\" to delete a line.",
 write_return_link: "Climb out",
 write_new_line_link: "(new line)",
-write_new_line_input: "Enter the text for this line or a blank SPACE to cancel",
-
+write_untitled_sentinel: "(untitled)",
+write_from_sentinel: "(unspecified)",
+write_new_field: "Enter the new value for this field, a blank SPACE to cancel, or \"/delete\" to delete.",
+write_new_line_input: "Enter the text for this line, a blank SPACE to cancel, or \"/delete\" to delete.",
+write_delete_command: "/delete",
+write_hide_line_numbers_link: "Hide line numbers",
+write_show_line_numbers_link: "Show line numbers",
 )

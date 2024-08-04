@@ -52,6 +52,12 @@ impl ClientState {
     pub fn keeaplive(&self) -> &Instant {
         &(self.keepalive)
     }
+    pub fn redirect_to_abyss(&self) -> anyhow::Result<windmark::response::Response> {
+        Ok(windmark::response::Response::temporary_redirect(format!(
+            "/{lang}/abyss/",
+            lang = &self.lang.code,
+        )))
+    }
     pub fn id(&self) -> usize {
         self.id
     }
