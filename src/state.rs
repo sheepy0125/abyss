@@ -3,7 +3,7 @@ use crate::components::certificate::{CertHash, CERT_HASH_LEN};
 use crate::database::DATABASE;
 use crate::i18n::Lang;
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context as _};
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,

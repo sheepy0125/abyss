@@ -1,13 +1,15 @@
 use crate::{
-    components::certificate::hash_certificate,
+    components::{
+        certificate::hash_certificate,
+        pages::abyss::{fetch_cartas::handle_fetching_cartas, write_carta::handle_writing_carta},
+    },
     database::DATABASE,
     get_lang,
     i18n::{Lang, ENGLISH},
     state::ClientState,
 };
 
-use anyhow::{anyhow, Context};
-use lazy_static::lazy_static;
+use anyhow::{anyhow, Context as _};
 use std::collections::VecDeque;
 use twinstar::{document::HeadingLevel, Document};
 use urlencoding::decode;
@@ -15,14 +17,6 @@ use windmark::context::RouteContext;
 
 pub const MAX_LINE_LEN: usize = 256;
 pub const MAX_NUM_LINES: usize = 50;
-
-lazy_static! {
-    // Twinstar's [`twinstar::Document`] type only allows URIs added through
-    // [`Document::add_link`] to have a 'static lifetime.
-    pub static ref WRITE_CHANGE_LINKS_LOOKUP_FROM_LINE_NUMBER: [&'static str; MAX_NUM_LINES + 1] = {
-        std::array::from_fn(|n| format!("write-{n}").leak() as &'static str)
-    };
-}
 
 #[derive(Default)]
 pub struct AbyssState {
@@ -80,6 +74,7 @@ fn fetch_random_carta(client: &ClientState) -> anyhow::Result<Option<(String, i3
     }
     Ok(None)
 }
+/// Peek into the abyss
 fn handle_peek_state_change(client: &mut ClientState) -> anyhow::Result<AbyssMode> {
     match fetch_random_carta(client)? {
         Some(carta) => {
@@ -94,110 +89,7 @@ fn handle_peek_state_change(client: &mut ClientState) -> anyhow::Result<AbyssMod
     };
     Ok(AbyssMode::FetchingCartas)
 }
-
-fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String> {
-    let abyss_state = &mut client.abyss_state;
-
-    // Fetch UI
-    let fetch_ui = Document::new()
-        .add_heading(HeadingLevel::H2, &client.lang.fetch_header)
-        .add_link("peek", &client.lang.fetch_link)
-        .add_link("write", &client.lang.write_link)
-        .to_string();
-
-    #[allow(clippy::useless_format)]
-    Ok(format!("{fetch_ui}"))
-}
-
-fn handle_writing_carta(client: &mut ClientState) -> anyhow::Result<String> {
-    if !matches!(client.abyss_state.currently, AbyssMode::WritingCarta) {
-        client.abyss_state.write_state.lines.clear();
-    }
-    client.abyss_state.currently = AbyssMode::WritingCarta;
-
-    let mut document = Document::new();
-    document
-        .add_heading(HeadingLevel::H2, &client.lang.write_header)
-        .add_blank_line()
-        .add_heading(HeadingLevel::H3, &client.lang.write_body_header);
-    for idx in 0..((client.abyss_state.write_state.lines.len() + 1).min(MAX_NUM_LINES)) {
-        let line_number = idx + 1;
-        /* Right-aligned padding for line numbers, such as:
-         *  [1] lorem ispum
-         * [10] hello world */
-        let padding = {
-            let pad: usize = 1 + (client.abyss_state.write_state.lines.len() >= 10) as usize;
-            let digit_count = 1 + (line_number >= 10) as usize;
-            " ".repeat(pad - digit_count)
-        };
-        let line_number_formatted = if !client.abyss_state.write_state.hide_line_numbers {
-            &format!("[{padding}{line_number}]")
-        } else {
-            ""
-        };
-        document.add_link(
-            WRITE_CHANGE_LINKS_LOOKUP_FROM_LINE_NUMBER[line_number],
-            match line_number {
-                _filled_lines
-                    if (1..=client.abyss_state.write_state.lines.len())
-                        .contains(&_filled_lines) =>
-                {
-                    format!(
-                        "{line_number_formatted} {line}",
-                        line = &client.abyss_state.write_state.lines[idx]
-                    )
-                }
-                _new_line => format!(
-                    "{line_number_formatted} {}",
-                    client.lang.write_new_line_link
-                ),
-            },
-        );
-    }
-    document
-        .add_blank_line()
-        .add_heading(HeadingLevel::H3, &client.lang.write_head_header);
-    document.add_link(
-        "title",
-        format!(
-            "{title_text}: {title}",
-            title_text = &client.lang.write_title_header,
-            title = client
-                .abyss_state
-                .write_state
-                .title
-                .as_deref()
-                .unwrap_or(&client.lang.write_untitled_sentinel),
-        ),
-    );
-    document.add_link(
-        "from",
-        format!(
-            "{from_text}: {from}",
-            from_text = &client.lang.write_from_header,
-            from = client
-                .abyss_state
-                .write_state
-                .from
-                .as_deref()
-                .unwrap_or(&client.lang.write_from_sentinel),
-        ),
-    );
-    document
-        .add_blank_line()
-        .add_link("help", &client.lang.write_help_link)
-        .add_link("fetch", &client.lang.write_return_link);
-    document.add_link(
-        "toggle-line-numbers",
-        if !client.abyss_state.write_state.hide_line_numbers {
-            &client.lang.write_hide_line_numbers_link
-        } else {
-            &client.lang.write_show_line_numbers_link
-        },
-    );
-
-    Ok(document.to_string())
-}
+// Write a line into a carta
 fn handle_write_line(
     client: &mut ClientState,
     context: &RouteContext,
@@ -244,6 +136,7 @@ fn handle_write_line(
         &client.lang.write_new_line_input,
     ))
 }
+// Change the from / title field of a carta
 fn handle_change_field(
     // Workaround for requiring a mutable borrow for the field
     client: &mut ClientState,
@@ -270,6 +163,7 @@ fn handle_change_field(
     ))
 }
 
+// `/abyss` endpoint
 pub fn handle_client_in_abyss(
     context: RouteContext,
 ) -> anyhow::Result<windmark::response::Response> {

@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::Context as _;
 use openssl::{
     hash::{DigestBytes, MessageDigest},
     x509::X509,

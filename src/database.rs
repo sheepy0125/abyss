@@ -3,7 +3,7 @@
 use crate::consts::DATABASE_URL;
 use crate::tree::TreeBranch;
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context as _};
 use diesel::{
     prelude::*,
     r2d2::{ConnectionManager, Pool, PooledConnection},
