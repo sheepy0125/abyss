@@ -15,12 +15,16 @@ pub struct Lang {
     pub fetch_header: String,
     pub fetch_link: String,
     pub no_new_cartas_status: String,
+    pub cancel_link: String,
+    pub submit_confirmation_link: String,
+    pub empty_carta_error: String,
     pub write_header: String,
     pub write_body_header: String,
     pub write_head_header: String,
     pub write_title_header: String,
     pub write_from_header: String,
     pub write_link: String,
+    pub write_submit_link: String,
     pub write_help_link: String,
     pub write_help_status: String,
     pub write_return_link: String,
@@ -32,6 +36,8 @@ pub struct Lang {
     pub write_delete_command: String,
     pub write_hide_line_numbers_link: String,
     pub write_show_line_numbers_link: String,
+    pub successful_submission_header: String,
+    pub successful_submission_pin_reminder_text: String,
 }
 
 // Dynamic parsing: Load file at runtime with runtime errors

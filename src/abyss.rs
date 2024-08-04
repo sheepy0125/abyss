@@ -1,7 +1,11 @@
 use crate::{
     components::{
         certificate::hash_certificate,
-        pages::abyss::{fetch_cartas::handle_fetching_cartas, write_carta::handle_writing_carta},
+        pages::abyss::{
+            fetch_cartas::handle_fetching_cartas,
+            submit_carta::{handle_submit_confirmation, handle_submit_new},
+            write_carta::handle_writing_carta,
+        },
     },
     database::DATABASE,
     get_lang,
@@ -18,9 +22,15 @@ use windmark::context::RouteContext;
 pub const MAX_LINE_LEN: usize = 256;
 pub const MAX_NUM_LINES: usize = 50;
 
+pub struct CartaInformation {
+    id: i32,
+    title: String,
+    from: String,
+}
+
 #[derive(Default)]
 pub struct AbyssState {
-    pub top_level_cartas_loaded: VecDeque<(String, i32)>,
+    pub top_level_cartas_loaded: VecDeque<CartaInformation>,
     pub currently: AbyssMode,
     pub to_flash: Vec<String>,
     pub languages: Vec<String>,
@@ -52,7 +62,7 @@ pub enum AbyssMode {
 }
 
 /// Fetch a random carta's title and ID
-fn fetch_random_carta(client: &ClientState) -> anyhow::Result<Option<(String, i32)>> {
+fn fetch_random_carta(client: &ClientState) -> anyhow::Result<Option<CartaInformation>> {
     let mut guard = DATABASE
         .lock()
         .map_err(|_| anyhow!("failed to lock database mutex"))?;
@@ -63,22 +73,34 @@ fn fetch_random_carta(client: &ClientState) -> anyhow::Result<Option<(String, i3
             .abyss_state
             .top_level_cartas_loaded
             .iter()
-            .map(|(_title, id)| *id),
+            .map(|info| info.id),
     )?;
 
     if let Some(carta) = carta {
-        return Ok(Some((
-            carta.title.unwrap_or_else(|| "untitled".to_string()),
-            carta.id,
-        )));
+        return Ok(Some(CartaInformation {
+            id: carta.id,
+            title: carta
+                .title
+                .as_deref()
+                .unwrap_or(&client.lang.write_untitled_sentinel)
+                .to_string(),
+            from: carta
+                .title
+                .as_deref()
+                .unwrap_or(&client.lang.write_from_sentinel)
+                .to_string(),
+        }));
     }
     Ok(None)
 }
 /// Peek into the abyss
 fn handle_peek_state_change(client: &mut ClientState) -> anyhow::Result<AbyssMode> {
     match fetch_random_carta(client)? {
-        Some(carta) => {
-            client.abyss_state.top_level_cartas_loaded.push_front(carta);
+        Some(carta_info) => {
+            client
+                .abyss_state
+                .top_level_cartas_loaded
+                .push_front(carta_info);
         }
         None => {
             client
@@ -116,7 +138,9 @@ fn handle_write_line(
 
         // Delete command
         if query == client.lang.write_delete_command {
-            client.abyss_state.write_state.lines.remove(line_number - 1);
+            if line_number < client.abyss_state.write_state.lines.len() {
+                client.abyss_state.write_state.lines.remove(line_number - 1);
+            }
             return client.redirect_to_abyss();
         }
 
@@ -228,6 +252,8 @@ pub fn handle_client_in_abyss(
                 client.abyss_state.write_state.hide_line_numbers =
                     !client.abyss_state.write_state.hide_line_numbers;
             }
+            "submit-confirmation" => return handle_submit_confirmation(&mut client),
+            "submit" => return handle_submit_new(&mut client),
             _ => (),
         };
         return client.redirect_to_abyss();

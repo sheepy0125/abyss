@@ -91,6 +91,9 @@ pub fn handle_writing_carta(client: &mut ClientState) -> anyhow::Result<String> 
     );
     document
         .add_blank_line()
+        .add_link("submit-confirmation", &client.lang.write_submit_link);
+    document
+        .add_blank_line()
         .add_link("help", &client.lang.write_help_link)
         .add_link("fetch", &client.lang.write_return_link);
     document.add_link(

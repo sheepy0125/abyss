@@ -7,6 +7,8 @@ diesel::table! {
         user_id -> Nullable<Int4>,
         #[max_length = 24]
         title -> Nullable<Bpchar>,
+        #[max_length = 12]
+        sender -> Nullable<Bpchar>,
         #[max_length = 2048]
         content -> Varchar,
         #[max_length = 6]

@@ -1,7 +1,7 @@
 //! ORM types for the database
 
-use crate::consts::DATABASE_URL;
 use crate::tree::TreeBranch;
+use crate::{consts::DATABASE_URL, i18n::Lang};
 
 use anyhow::{anyhow, Context as _};
 use diesel::{
@@ -10,6 +10,9 @@ use diesel::{
 };
 use fix_fn::fix_fn;
 use lazy_static::lazy_static;
+use rand::distributions::Uniform;
+use rand::prelude::Distribution as _;
+use rand::thread_rng;
 use serde::Serialize;
 use std::{
     cell::RefCell,
@@ -51,10 +54,26 @@ pub struct Carta {
     pub user_id: Option<i32>,
     pub parent: Option<i32>,
     pub title: Option<String>,     // max len: 24
+    pub sender: Option<String>,    // max len: 12
     pub content: String,           // max len: 2048
     pub modification_code: String, // 6-digit pin
     pub creation: i32,             // unix timestamp
-    pub modification: Option<i32>,
+    pub modification: Option<i32>, // unix timestamp
+    pub lang: String,
+    pub random_accessible: bool,
+}
+#[derive(Insertable, Serialize, Clone, Debug)]
+#[diesel(table_name = crate::schema::cartas)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct CartaUpdate {
+    pub user_id: Option<i32>,
+    pub parent: Option<i32>,
+    pub title: Option<String>,     // max len: 24
+    pub sender: Option<String>,    // max len: 12
+    pub content: String,           // max len: 2048
+    pub modification_code: String, // 6-digit pin
+    pub creation: i32,             // unix timestamp
+    pub modification: Option<i32>, // unix timestamp
     pub lang: String,
     pub random_accessible: bool,
 }
@@ -157,6 +176,50 @@ impl Database {
         log::trace!("inserted user {id}", id = user.id);
 
         Ok(user)
+    }
+
+    /// Insert a new carta
+    pub fn insert_carta(
+        &mut self,
+        user_id: Option<i32>,
+        parent: Option<i32>,
+        content: String,
+        title: Option<String>,
+        from: Option<String>,
+        lang: &Lang,
+    ) -> anyhow::Result<Carta> {
+        log::trace!("inserting a new carta");
+
+        // Generate 6-digit modification PIN
+        let uniform = Uniform::new('0', '9');
+        let mut rng = thread_rng();
+        let modification_code = (0..6).map(|_| uniform.sample(&mut rng)).collect();
+
+        let update = CartaUpdate {
+            user_id,
+            parent,
+            title,
+            sender: from,
+            content,
+            lang: lang.code.clone(),
+            random_accessible: parent.is_none(),
+            creation: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as _,
+            modification: None,
+            modification_code,
+        };
+
+        use crate::schema::cartas::dsl;
+        let carta = update
+            .insert_into(dsl::cartas)
+            .returning(Carta::as_returning())
+            .get_result(&mut self.connection)?;
+
+        log::trace!("inserted carta {id}", id = carta.id);
+
+        Ok(carta)
     }
 
     /// Fetch a carta from its ID
