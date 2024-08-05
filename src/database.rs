@@ -143,7 +143,7 @@ pub struct Carta {
     pub modification_code: String, // 6-digit pin
     pub creation: i32,             // unix timestamp
     pub modification: Option<i32>, // unix timestamp
-    pub lang: String,
+    pub lang: String,              // 2-digit code, e.g. `en`
     pub random_accessible: bool,
 }
 #[derive(Insertable, Serialize, Clone, Debug)]
@@ -159,9 +159,11 @@ pub struct CartaUpdate {
     pub modification_code: String, // 6-digit pin
     pub creation: i32,             // unix timestamp
     pub modification: Option<i32>, // unix timestamp
-    pub lang: String,
+    pub lang: String,              // 2 digit code, e.g. `en`
     pub random_accessible: bool,
 }
+pub const MAX_TITLE_LEN: usize = 24;
+pub const MAX_FROM_LEN: usize = 12;
 
 #[derive(Queryable, Selectable, Serialize, Clone, Debug)]
 #[diesel(table_name = crate::schema::users)]

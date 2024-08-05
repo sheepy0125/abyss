@@ -36,6 +36,7 @@ pub struct Lang {
     pub write_delete_command: String,
     pub write_hide_line_numbers_link: String,
     pub write_show_line_numbers_link: String,
+    pub write_too_long: String,
     pub successful_submission_header: String,
     pub successful_submission_pin_reminder_text: String,
 }

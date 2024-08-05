@@ -32,6 +32,7 @@ write_new_line_input: "Enter the text for this line, a blank SPACE to cancel, or
 write_delete_command: "/delete",
 write_hide_line_numbers_link: "Hide line numbers",
 write_show_line_numbers_link: "Show line numbers",
+write_too_long: "Sorry, that input was too long!",
 successful_submission_header: "Submitted successfully!",
 successful_submission_pin_reminder_text: "If you want to delete this in the future, remember the following:",
 )

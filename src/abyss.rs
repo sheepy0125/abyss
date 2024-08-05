@@ -8,7 +8,7 @@ use crate::{
             write_carta::handle_writing_carta,
         },
     },
-    database::{Carta, DatabaseCache, DATABASE, DATABASE_CACHE},
+    database::{Carta, DatabaseCache, DATABASE, DATABASE_CACHE, MAX_FROM_LEN, MAX_TITLE_LEN},
     get_lang,
     i18n::{Lang, ENGLISH},
     state::ClientState,
@@ -22,6 +22,26 @@ use windmark::context::RouteContext;
 
 pub const MAX_LINE_LEN: usize = 256;
 pub const MAX_NUM_LINES: usize = 50;
+
+/// Helper function to validate an input's length
+fn validate_len(
+    client: &mut ClientState,
+    input: &str,
+    len: usize,
+) -> Option<windmark::response::Response> {
+    // xxx: does postgresql's bpchar type's length use characters or graphemes?
+    // xxx: for now, assume the latter
+    if input.len() > len {
+        client.abyss_state.to_flash.push(format!(
+            "{write_too_long} ({actual_len}/{len}): {input}",
+            actual_len = input.len(),
+            write_too_long = &client.lang.write_too_long,
+            input = input
+        ));
+        return client.redirect_to_abyss().ok();
+    }
+    None
+}
 
 /// Carta information to show in the listing
 pub struct CartaInformation {
@@ -124,6 +144,10 @@ fn handle_write_line(
             Err(anyhow!("invalid line number"))?;
         }
 
+        if let Some(res) = validate_len(client, query, MAX_LINE_LEN) {
+            return Ok(res);
+        };
+
         // Empty to cancel
         if query.is_empty() {
             return client.redirect_to_abyss();
@@ -143,7 +167,6 @@ fn handle_write_line(
         }
 
         let line = &mut client.abyss_state.write_state.lines[line_number - 1];
-        // fixme: validate
         *line = query.to_string();
 
         return client.redirect_to_abyss();
@@ -158,19 +181,23 @@ fn handle_change_field(
     // Workaround for requiring a mutable borrow for the field
     client: &mut ClientState,
     field: &mut Option<String>,
+    max_len: usize,
     context: &RouteContext,
 ) -> anyhow::Result<windmark::response::Response> {
     log::trace!("client with id {id} is changing a field", id = client.id());
 
     // User input
     if let Some(query) = context.url.query() {
+        if let Some(res) = validate_len(client, query, max_len) {
+            return Ok(res);
+        };
+
         // Delete command
         if query == client.lang.write_delete_command {
             *field = None;
             return client.redirect_to_abyss();
         }
 
-        // fixme: validate
         *field = Some(decode(query).context("malformed input")?.to_string());
         return client.redirect_to_abyss();
     }
@@ -217,13 +244,13 @@ pub fn handle_client_in_abyss(
                 // "totally safe"
                 let field =
                     unsafe { &mut *std::ptr::addr_of_mut!(client.abyss_state.write_state.from) };
-                return handle_change_field(&mut client, field, &context);
+                return handle_change_field(&mut client, field, MAX_FROM_LEN, &context);
             }
             "title" => {
                 // "totally safe"
                 let field =
                     unsafe { &mut *std::ptr::addr_of_mut!(client.abyss_state.write_state.title) };
-                return handle_change_field(&mut client, field, &context);
+                return handle_change_field(&mut client, field, MAX_TITLE_LEN, &context);
             }
             "write" => client.abyss_state.currently = AbyssMode::WritingCarta,
             write_line if state.starts_with("write-") => {
