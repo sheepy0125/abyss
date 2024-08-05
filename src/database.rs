@@ -1,5 +1,6 @@
 //! ORM types for the database
 
+use crate::components::certificate::CERT_HASH_LEN;
 use crate::tree::TreeBranch;
 use crate::{consts::DATABASE_URL, i18n::Lang};
 
@@ -15,6 +16,7 @@ use rand::prelude::Distribution as _;
 use rand::thread_rng;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::MutexGuard;
 use std::time::{Duration, Instant};
 use std::{
@@ -41,24 +43,29 @@ lazy_static! {
 /// A database cache to avoid storing heap-allocated objects for every user
 #[derive(Default)]
 pub struct DatabaseCache {
-    pub user: Arc<Mutex<HashMap<i32, Cache<User>>>>,
+    pub user: Arc<Mutex<HashMap<[u8; CERT_HASH_LEN], Cache<User>>>>,
     pub carta: Arc<Mutex<HashMap<i32, Cache<Carta>>>>,
 }
 pub struct Cache<T> {
     pub creation: Instant,
     pub store: Arc<T>,
 }
+pub trait CacheKey: Hash + Eq + Clone {}
+impl<K> CacheKey for K where K: Hash + Eq + Clone {}
 impl DatabaseCache {
-    pub type TCache<T> = Arc<Mutex<HashMap<i32, Cache<T>>>>;
+    pub type TCache<K: Hash + Eq, T> = Arc<Mutex<HashMap<K, Cache<T>>>>;
 
-    pub fn lookup_cache<T>(cache: &Self::TCache<T>, id: i32) -> anyhow::Result<Option<Arc<T>>> {
+    pub fn lookup_cache<K: CacheKey, T>(
+        cache: &Self::TCache<K, T>,
+        key: &K,
+    ) -> anyhow::Result<Option<Arc<T>>> {
         let mut guard: MutexGuard<HashMap<_, Cache<T>>> = cache
             .lock()
             .map_err(|_| anyhow!("failed to lock db cache mutex"))?;
 
         let mut remove = false;
         let mut store = None;
-        if let Some(cache) = guard.get(&id) {
+        if let Some(cache) = guard.get(key) {
             if Instant::now().duration_since(cache.creation)
                 > Duration::from_secs(CACHE_INVALIDATION_SECS)
             {
@@ -68,34 +75,43 @@ impl DatabaseCache {
             }
         }
         if remove {
-            guard.remove(&id);
+            guard.remove(&key);
+            log::trace!("not found");
             return Ok(None);
         }
+
         Ok(store)
     }
 
-    pub fn insert_cache<T>(cache: &Self::TCache<T>, id: i32, store: T) -> anyhow::Result<Arc<T>> {
+    pub fn insert_cache<K: CacheKey, T>(
+        cache: &Self::TCache<K, T>,
+        key: &K,
+        store: T,
+    ) -> anyhow::Result<Arc<T>> {
         let mut guard: MutexGuard<HashMap<_, Cache<T>>> = cache
             .lock()
             .map_err(|_| anyhow!("failed to lock db cache mutex"))?;
+
         let cache = Cache {
             creation: Instant::now(),
             store: Arc::new(store),
         };
+
         let store = Arc::clone(&cache.store);
-        guard.insert(id, cache);
+        guard.insert(key.clone(), cache);
+
         Ok(store)
     }
 
-    pub fn get_or_else<T>(
-        cache: &Self::TCache<T>,
-        id: i32,
+    pub fn get_or_else<K: CacheKey, T>(
+        cache: &Self::TCache<K, T>,
+        key: &K,
         otherwise: &dyn Fn() -> anyhow::Result<T>,
     ) -> anyhow::Result<Arc<T>> {
-        if let Some(t) = Self::lookup_cache(cache, id)? {
+        if let Some(t) = Self::lookup_cache(cache, key)? {
             return Ok(t);
         }
-        Self::insert_cache(cache, id, otherwise()?)
+        Self::insert_cache(cache, key, otherwise()?)
     }
 }
 

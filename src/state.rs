@@ -1,6 +1,6 @@
 use crate::abyss::AbyssState;
 use crate::components::certificate::{CertHash, CERT_HASH_LEN};
-use crate::database::DATABASE;
+use crate::database::{DatabaseCache, DATABASE, DATABASE_CACHE};
 use crate::i18n::Lang;
 
 use anyhow::{anyhow, Context as _};
@@ -27,14 +27,22 @@ pub struct ClientState {
     pub lang: &'static Lang,
 }
 impl ClientState {
-    fn new(cert_hash: &[u8], lang: &'static Lang) -> anyhow::Result<Self> {
-        let mut database_guard = DATABASE
-            .lock()
-            .map_err(|_| anyhow!("failed to lock database mutex"))?;
+    fn new(cert_hash: &[u8; CERT_HASH_LEN], lang: &'static Lang) -> anyhow::Result<Self> {
+        let user = DatabaseCache::get_or_else::<[u8; CERT_HASH_LEN], _>(
+            &DATABASE_CACHE.user,
+            cert_hash,
+            &|| {
+                let mut database_guard = DATABASE
+                    .lock()
+                    .map_err(|_| anyhow!("failed to lock database mutex"))?;
 
-        let user = database_guard.fetch_user(cert_hash)?.map_or_else(
-            || database_guard.insert_user(lang.code.clone(), cert_hash),
-            Ok,
+                let user = database_guard.fetch_user(cert_hash)?.map_or_else(
+                    || database_guard.insert_user(lang.code.clone(), cert_hash),
+                    Ok,
+                )?;
+
+                Ok(user)
+            },
         )?;
 
         Ok(Self {

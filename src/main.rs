@@ -2,8 +2,6 @@
 
 #![allow(incomplete_features)]
 #![feature(inherent_associated_types)]
-#![feature(maybe_uninit_uninit_array)]
-#![feature(str_from_raw_parts)]
 
 use crate::abyss::handle_client_in_abyss;
 use crate::consts::FOOTER;

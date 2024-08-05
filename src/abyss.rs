@@ -4,17 +4,18 @@ use crate::{
         pages::abyss::{
             fetch_cartas::handle_fetching_cartas,
             submit_carta::{handle_submit_confirmation, handle_submit_new},
+            view_carta::handle_viewing_carta,
             write_carta::handle_writing_carta,
         },
     },
-    database::DATABASE,
+    database::{Carta, DatabaseCache, DATABASE, DATABASE_CACHE},
     get_lang,
     i18n::{Lang, ENGLISH},
     state::ClientState,
 };
 
 use anyhow::{anyhow, Context as _};
-use std::collections::VecDeque;
+use std::{collections::VecDeque, sync::Arc};
 use twinstar::{document::HeadingLevel, Document};
 use urlencoding::decode;
 use windmark::context::RouteContext;
@@ -25,9 +26,7 @@ pub const MAX_NUM_LINES: usize = 50;
 /// Carta information to show in the listing
 pub struct CartaInformation {
     pub id: i32,
-    pub title: String,
-    pub from: String,
-    pub uuid: String,
+    pub carta: Arc<Carta>,
 }
 
 #[derive(Default)]
@@ -60,7 +59,7 @@ pub enum AbyssMode {
     #[default]
     FetchingCartas,
     WritingCarta,
-    ViewingCarta(String),
+    ViewingCarta(String), // uuid
 }
 
 /// Fetch a random carta's title and ID
@@ -75,23 +74,14 @@ fn fetch_random_carta(client: &ClientState) -> anyhow::Result<Option<CartaInform
             .abyss_state
             .top_level_cartas_loaded
             .iter()
-            .map(|info| info.id),
+            .map(|info| info.carta.id),
     )?;
 
     if let Some(carta) = carta {
+        let carta = DatabaseCache::insert_cache(&DATABASE_CACHE.carta, &carta.id.clone(), carta)?;
         return Ok(Some(CartaInformation {
             id: carta.id,
-            title: carta
-                .title
-                .as_deref()
-                .unwrap_or(&client.lang.write_untitled_sentinel)
-                .to_string(),
-            from: carta
-                .sender
-                .as_deref()
-                .unwrap_or(&client.lang.write_from_sentinel)
-                .to_string(),
-            uuid: carta.uuid.clone(),
+            carta,
         }));
     }
     Ok(None)
@@ -276,7 +266,10 @@ pub fn handle_client_in_abyss(
     let body = match client.abyss_state.currently {
         AbyssMode::FetchingCartas => handle_fetching_cartas(&mut client)?,
         AbyssMode::WritingCarta => handle_writing_carta(&mut client)?,
-        AbyssMode::ViewingCarta(ref uuid) => todo!("viewing carta"),
+        AbyssMode::ViewingCarta(ref uuid) => {
+            let uuid = uuid.clone();
+            handle_viewing_carta(&mut client, uuid)?
+        }
     };
     Ok(windmark::response::Response::success(format!(
         "{flash_document}{body}"
