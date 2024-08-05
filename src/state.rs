@@ -112,6 +112,7 @@ impl ClientState {
             log::trace!("found client with id {id}");
             return Ok(Some((id, state)));
         };
+
         log::trace!("client not found");
         Ok(None)
     }

@@ -1,4 +1,4 @@
-use crate::{abyss::CartaInformation, database::Carta, state::ClientState};
+use crate::{abyss::CartaInformation, state::ClientState};
 
 use twinstar::{document::HeadingLevel, Document};
 
@@ -21,12 +21,13 @@ pub fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String
             format!("read-{uuid}", uuid = carta.uuid).as_str(),
             format!(
                 "{from} - {title}",
-                title = carta
-                    .title
-                    .as_deref()
-                    .unwrap_or(&client.lang.write_untitled_sentinel),
                 from = carta
                     .sender
+                    .as_deref()
+                    .unwrap_or(&client.lang.write_untitled_sentinel)
+                    .trim_start(),
+                title = carta
+                    .title
                     .as_deref()
                     .unwrap_or(&client.lang.write_from_sentinel)
             ),

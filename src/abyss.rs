@@ -78,7 +78,7 @@ fn fetch_random_carta(client: &ClientState) -> anyhow::Result<Option<CartaInform
     )?;
 
     if let Some(carta) = carta {
-        let carta = DatabaseCache::insert_cache(&DATABASE_CACHE.carta, &carta.id.clone(), carta)?;
+        let carta = DatabaseCache::insert_cache(&DATABASE_CACHE.carta, &carta.uuid.clone(), carta)?;
         return Ok(Some(CartaInformation {
             id: carta.id,
             carta,

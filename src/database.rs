@@ -44,7 +44,7 @@ lazy_static! {
 #[derive(Default)]
 pub struct DatabaseCache {
     pub user: Arc<Mutex<HashMap<[u8; CERT_HASH_LEN], Cache<User>>>>,
-    pub carta: Arc<Mutex<HashMap<i32, Cache<Carta>>>>,
+    pub carta: Arc<Mutex<HashMap<String, Cache<Carta>>>>,
 }
 pub struct Cache<T> {
     pub creation: Instant,
@@ -75,7 +75,7 @@ impl DatabaseCache {
             }
         }
         if remove {
-            guard.remove(&key);
+            guard.remove(key);
             log::trace!("not found");
             return Ok(None);
         }
@@ -320,6 +320,22 @@ impl Database {
             .with_context(|| anyhow!("fetching carta with id {id}"))?;
 
         log::trace!("fetched carta with id {id}: {carta:?}");
+
+        Ok(carta)
+    }
+
+    /// Fetch a carta from its UUID
+    pub fn fetch_carta_uuid(&mut self, uuid: &str) -> anyhow::Result<Carta> {
+        log::trace!("fetching carta with uuid {uuid}");
+
+        use crate::schema::cartas::dsl;
+        let carta = dsl::cartas
+            .filter(dsl::uuid.eq(uuid))
+            .select(Carta::as_select())
+            .first(&mut self.connection)
+            .with_context(|| anyhow!("fetching carta with uuid {uuid}"))?;
+
+        log::trace!("fetched carta with id {id}: {carta:?}", id = carta.id);
 
         Ok(carta)
     }

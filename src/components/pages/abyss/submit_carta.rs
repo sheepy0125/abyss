@@ -1,6 +1,6 @@
-use crate::{abyss::AbyssMode, database::DATABASE, state::ClientState};
+use crate::{database::DATABASE, state::ClientState};
 
-use anyhow::{anyhow, Context as _};
+use anyhow::anyhow;
 use twinstar::Document;
 
 pub fn handle_submit_confirmation(
