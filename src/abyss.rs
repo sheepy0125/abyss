@@ -8,6 +8,7 @@ use crate::{
             write_carta::handle_writing_carta,
         },
     },
+    consts::DEFAULT_CARTA,
     database::{Carta, DatabaseCache, DATABASE, DATABASE_CACHE, MAX_FROM_LEN, MAX_TITLE_LEN},
     get_lang,
     i18n::{Lang, ENGLISH},
@@ -16,7 +17,7 @@ use crate::{
 
 use anyhow::{anyhow, Context as _};
 use std::{collections::VecDeque, sync::Arc};
-use twinstar::{document::HeadingLevel, Document};
+use twinstar::Document;
 use urlencoding::decode;
 use windmark::context::RouteContext;
 
@@ -69,7 +70,10 @@ impl AbyssState {
     pub fn new(lang: &Lang) -> Self {
         Self {
             languages: vec![lang.code.clone()],
-            // lines: ["a"; 50].iter().map(|s| (*s).to_string()).collect(), // debug
+            top_level_cartas_loaded: VecDeque::from_iter([CartaInformation {
+                id: 1,
+                carta: Arc::clone(&DEFAULT_CARTA),
+            }]),
             ..Default::default()
         }
     }
@@ -84,20 +88,24 @@ pub enum AbyssMode {
     ViewingCarta(String),  // uuid
 }
 
-/// Fetch a random carta's title and ID
-fn fetch_random_carta(client: &ClientState) -> anyhow::Result<Option<CartaInformation>> {
-    let mut guard = DATABASE
+/// Fetch a carta's title and ID. An id of None designates a random carta to be fetched.
+fn fetch_carta(client: &ClientState, id: Option<i32>) -> anyhow::Result<Option<CartaInformation>> {
+    let mut database_guard = DATABASE
         .lock()
         .map_err(|_| anyhow!("failed to lock database mutex"))?;
 
-    let carta = guard.fetch_random_carta(
-        &client.abyss_state.languages,
-        client
-            .abyss_state
-            .top_level_cartas_loaded
-            .iter()
-            .map(|info| info.carta.id),
-    )?;
+    let carta = if let Some(id) = id {
+        Some(database_guard.fetch_carta(id)?)
+    } else {
+        database_guard.fetch_random_carta(
+            &client.abyss_state.languages,
+            client
+                .abyss_state
+                .top_level_cartas_loaded
+                .iter()
+                .map(|info| info.carta.id),
+        )?
+    };
 
     if let Some(carta) = carta {
         let carta = DatabaseCache::insert_cache(&DATABASE_CACHE.carta, &carta.uuid.clone(), carta)?;
@@ -110,7 +118,7 @@ fn fetch_random_carta(client: &ClientState) -> anyhow::Result<Option<CartaInform
 }
 /// Peek into the abyss
 fn handle_peek_state_change(client: &mut ClientState) -> anyhow::Result<AbyssMode> {
-    match fetch_random_carta(client)? {
+    match fetch_carta(client, None)? {
         Some(carta_info) => {
             client
                 .abyss_state
@@ -157,7 +165,7 @@ fn handle_write_line(
 
         // Delete command
         if query == client.lang.write_delete_command {
-            if line_number < client.abyss_state.write_state.lines.len() {
+            if line_number <= client.abyss_state.write_state.lines.len() {
                 client.abyss_state.write_state.lines.remove(line_number - 1);
             }
             return client.redirect_to_abyss();
@@ -175,7 +183,7 @@ fn handle_write_line(
     }
 
     Ok(windmark::response::Response::input(
-        &client.lang.write_new_line_input,
+        &client.lang.write_new_line_message,
     ))
 }
 // Change the from / title field of a carta
@@ -208,7 +216,7 @@ fn handle_change_field(
     }
 
     Ok(windmark::response::Response::input(
-        &client.lang.write_new_field,
+        &client.lang.write_new_field_message,
     ))
 }
 /// Handle reporting a carta
@@ -285,7 +293,7 @@ pub fn handle_client_in_abyss(
                 return handle_write_line(&mut client, &context, line_number);
             }
             "help" => {
-                let flash = client.lang.write_help_status.clone();
+                let flash = client.lang.write_help_flash.clone();
                 client.abyss_state.to_flash.push(flash)
             }
             "toggle-line-numbers" => {
@@ -326,9 +334,7 @@ pub fn handle_client_in_abyss(
 
     let mut flash_document = Document::new();
     while let Some(flash) = client.abyss_state.to_flash.pop() {
-        flash_document
-            .add_heading(HeadingLevel::H3, flash)
-            .add_blank_line();
+        flash_document.add_text(flash).add_blank_line();
     }
     let body = match client.abyss_state.currently {
         AbyssMode::FetchingCartas => handle_fetching_cartas(&mut client)?,

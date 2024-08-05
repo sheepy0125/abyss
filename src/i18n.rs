@@ -5,42 +5,50 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Lang {
+    /// 2-character code, e.g. "en"
     pub code: String,
-    //
     pub cert_required: String,
-    // index
+    /* Carta */
+    pub untitled_sentinel: String,
+    pub from_sentinel: String,
+    /* Index page */
     pub index_header: String,
     pub abyss_enter_link: String,
-    // abyss
-    pub fetch_header: String,
+    /* Abyss page */
+    pub abyss_header: String,
     pub fetch_link: String,
+    pub write_link: String,
+    pub return_link: String,
+    /* Fetch page */
     pub no_new_cartas_status: String,
+    /* Submit confirmation page */
     pub cancel_link: String,
     pub submit_confirmation_link: String,
+    /* Submit page */
     pub empty_carta_error: String,
+    pub successful_submission_header: String,
+    pub successful_submission_modification_text: String,
+    /* Write page */
+    pub write_help_flash: String,
     pub write_header: String,
     pub write_body_header: String,
+    pub write_new_line_message: String,
+    pub write_new_line_link: String,
     pub write_head_header: String,
-    pub write_title_header: String,
-    pub write_from_header: String,
-    pub write_link: String,
+    pub write_title_link: String,
+    pub write_from_link: String,
+    pub write_new_field_message: String,
     pub write_submit_link: String,
     pub write_help_link: String,
-    pub write_help_status: String,
-    pub write_return_link: String,
-    pub write_new_line_link: String,
-    pub write_untitled_sentinel: String,
-    pub write_from_sentinel: String,
-    pub write_new_field: String,
-    pub write_new_line_input: String,
     pub write_delete_command: String,
     pub write_hide_line_numbers_link: String,
     pub write_show_line_numbers_link: String,
     pub write_too_long: String,
-    pub successful_submission_header: String,
-    pub successful_submission_pin_reminder_text: String,
+    /* View page */
+    pub view_header: String,
     pub view_replies_header: String,
     pub view_add_reply_link: String,
+    pub view_report_link: String,
     pub report_submitted_flash: String,
 }
 

@@ -18,6 +18,10 @@ pub fn display_field<'a>(field: &'a Option<String>, sentinel: &'a str) -> &'a st
 pub fn handle_viewing_carta(client: &mut ClientState, uuid: String) -> anyhow::Result<String> {
     let mut document = Document::new();
 
+    document
+        .add_heading(HeadingLevel::H1, &client.lang.view_header)
+        .add_blank_line();
+
     let carta = DatabaseCache::get_or_else(&DATABASE_CACHE.carta, &uuid, &|| {
         let mut database_guard = DATABASE
             .lock()
@@ -35,9 +39,9 @@ pub fn handle_viewing_carta(client: &mut ClientState, uuid: String) -> anyhow::R
     document.add_heading(
         HeadingLevel::H3,
         format!(
-            "=== {from} - {title}",
-            from = display_field(&carta.sender, &client.lang.write_from_sentinel),
-            title = display_field(&carta.title, &client.lang.write_untitled_sentinel)
+            "{from} - {title}",
+            from = display_field(&carta.sender, &client.lang.from_sentinel),
+            title = display_field(&carta.title, &client.lang.untitled_sentinel)
         ),
     );
     for line in carta.content.split('\n') {
@@ -57,10 +61,10 @@ pub fn handle_viewing_carta(client: &mut ClientState, uuid: String) -> anyhow::R
             document_ref.borrow_mut().add_link(
                 format!("read-{uuid}", uuid = &tree.node.uuid).as_str(),
                 format!(
-                    "{indent} {from} - {title}",
-                    indent = if !current { "-- " } else { "++ " }.repeat(indent),
-                    from = display_field(&tree.node.sender, &client.lang.write_from_sentinel),
-                    title = display_field(&tree.node.title, &client.lang.write_untitled_sentinel)
+                    "{indent}{from} - {title}",
+                    indent = if !current { "- " } else { "+ " }.repeat(indent),
+                    from = display_field(&tree.node.sender, &client.lang.from_sentinel),
+                    title = display_field(&tree.node.title, &client.lang.untitled_sentinel)
                 ),
             );
             for child in tree.children.borrow().iter() {
@@ -68,16 +72,24 @@ pub fn handle_viewing_carta(client: &mut ClientState, uuid: String) -> anyhow::R
             }
         }
     );
-    reply_tree(0, Rc::new(carta_tree));
+    reply_tree(1, Rc::new(carta_tree));
     let mut document = document_ref.into_inner();
-    document.add_blank_line().add_link(
-        format!("reply-{uuid}").as_str(),
-        &client.lang.view_add_reply_link,
-    );
+    document.add_heading(HeadingLevel::H3, "===");
 
     document
         .add_blank_line()
-        .add_link("fetch", &client.lang.write_return_link);
+        .add_link(
+            format!("reply-{uuid}").as_str(),
+            &client.lang.view_add_reply_link,
+        )
+        .add_link(
+            format!("report-{uuid}").as_str(),
+            &client.lang.view_report_link,
+        );
+
+    document
+        .add_blank_line()
+        .add_link("fetch", &client.lang.return_link);
 
     Ok(document.to_string())
 }

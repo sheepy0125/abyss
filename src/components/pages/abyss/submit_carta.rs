@@ -4,13 +4,15 @@ use crate::{
 };
 
 use anyhow::anyhow;
-use twinstar::Document;
+use twinstar::{document::HeadingLevel, Document};
 
 pub fn handle_submit_confirmation(
     client: &mut ClientState,
 ) -> anyhow::Result<windmark::response::Response> {
     Ok(windmark::response::Response::success(
         Document::new()
+            .add_heading(HeadingLevel::H1, &client.lang.write_header)
+            .add_blank_line()
             .add_link("submit", &client.lang.submit_confirmation_link)
             .add_link("write", &client.lang.cancel_link)
             .to_string(),
@@ -21,10 +23,6 @@ pub fn handle_submit_new(
     client: &mut ClientState,
     reply_uuid: Option<String>,
 ) -> anyhow::Result<windmark::response::Response> {
-    let mut database_guard = DATABASE
-        .lock()
-        .map_err(|_| anyhow!("failed to lock the database"))?;
-
     // Ensure carta isn't blank!!
     if client.abyss_state.write_state.lines.is_empty() {
         client
@@ -45,6 +43,10 @@ pub fn handle_submit_new(
         parent = Some(reply_carta.id);
     }
 
+    let mut database_guard = DATABASE
+        .lock()
+        .map_err(|_| anyhow!("failed to lock the database"))?;
+
     let carta = database_guard.insert_carta(
         Some(client.id() as _),
         parent,
@@ -57,16 +59,16 @@ pub fn handle_submit_new(
     Ok(windmark::response::Response::success(
         Document::new()
             .add_heading(
-                twinstar::document::HeadingLevel::H2,
+                twinstar::document::HeadingLevel::H1,
                 &client.lang.successful_submission_header,
             )
-            .add_text(&client.lang.successful_submission_pin_reminder_text)
+            .add_text(&client.lang.successful_submission_modification_text)
             .add_text(format!(
                 "ID: {id}; PIN: {pin}",
                 id = carta.id,
                 pin = carta.modification_code
             ))
             .add_blank_line()
-            .add_link("fetch", &client.lang.write_return_link),
+            .add_link("fetch", &client.lang.return_link),
     ))
 }

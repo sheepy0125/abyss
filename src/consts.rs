@@ -1,7 +1,9 @@
 //! Lazily loaded constants and regular constants.
 
 use lazy_static::lazy_static;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
+
+use crate::database::{Carta, DATABASE};
 
 macro_rules! from_environment {
     ($key:expr) => {
@@ -17,5 +19,13 @@ lazy_static! {
         .canonicalize()
         .expect("i18n directory not found");
 }
+
+lazy_static! {
+    pub static ref DEFAULT_CARTA: Arc<Carta> = {
+        let mut database_guard = DATABASE.lock().unwrap();
+        Arc::new(database_guard.fetch_carta(0).unwrap())
+    };
+}
+
 pub const FOOTER: &str = r#"
 "#;

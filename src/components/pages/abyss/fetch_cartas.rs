@@ -6,11 +6,13 @@ use twinstar::{document::HeadingLevel, Document};
 pub fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String> {
     let mut document = Document::new();
     document
-        .add_heading(HeadingLevel::H2, &client.lang.fetch_header)
+        .add_heading(HeadingLevel::H1, &client.lang.abyss_header)
+        .add_blank_line()
         .add_link("peek", &client.lang.fetch_link)
         .add_link("write", &client.lang.write_link)
         .add_blank_line();
 
+    document.add_heading(HeadingLevel::H3, "===");
     for (idx, CartaInformation { carta, .. }) in client
         .abyss_state
         .top_level_cartas_loaded
@@ -24,18 +26,16 @@ pub fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String
                 from = carta
                     .sender
                     .as_deref()
-                    .unwrap_or(&client.lang.write_untitled_sentinel)
+                    .unwrap_or(&client.lang.untitled_sentinel)
                     .trim_end(),
-                title = carta
-                    .title
-                    .as_deref()
-                    .unwrap_or(&client.lang.write_from_sentinel)
+                title = carta.title.as_deref().unwrap_or(&client.lang.from_sentinel)
             ),
         );
         if idx >= 10 {
             break;
         }
     }
+    document.add_heading(HeadingLevel::H3, "===");
 
     Ok(document.to_string())
 }
