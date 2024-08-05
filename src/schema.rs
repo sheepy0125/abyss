@@ -3,6 +3,8 @@
 diesel::table! {
     cartas (id) {
         id -> Int4,
+        #[max_length = 36]
+        uuid -> Bpchar,
         parent -> Nullable<Int4>,
         user_id -> Nullable<Int4>,
         #[max_length = 24]

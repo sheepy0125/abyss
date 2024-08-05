@@ -22,10 +22,12 @@ use windmark::context::RouteContext;
 pub const MAX_LINE_LEN: usize = 256;
 pub const MAX_NUM_LINES: usize = 50;
 
+/// Carta information to show in the listing
 pub struct CartaInformation {
-    id: i32,
-    title: String,
-    from: String,
+    pub id: i32,
+    pub title: String,
+    pub from: String,
+    pub uuid: String,
 }
 
 #[derive(Default)]
@@ -53,12 +55,12 @@ impl AbyssState {
     }
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone)]
 pub enum AbyssMode {
     #[default]
     FetchingCartas,
     WritingCarta,
-    ViewingCarta(i32),
+    ViewingCarta(String),
 }
 
 /// Fetch a random carta's title and ID
@@ -85,10 +87,11 @@ fn fetch_random_carta(client: &ClientState) -> anyhow::Result<Option<CartaInform
                 .unwrap_or(&client.lang.write_untitled_sentinel)
                 .to_string(),
             from: carta
-                .title
+                .sender
                 .as_deref()
                 .unwrap_or(&client.lang.write_from_sentinel)
                 .to_string(),
+            uuid: carta.uuid.clone(),
         }));
     }
     Ok(None)
@@ -233,13 +236,10 @@ pub fn handle_client_in_abyss(
                 return handle_change_field(&mut client, field, &context);
             }
             "write" => client.abyss_state.currently = AbyssMode::WritingCarta,
-            write_line if state.starts_with("write") => {
+            write_line if state.starts_with("write-") => {
                 let line_number = write_line.trim_start_matches("write-").parse::<usize>()?;
-                let line_number = line_number
-                    .checked_sub(1)
-                    .context("line number underflow")?
-                    + 1;
-                if line_number > MAX_NUM_LINES {
+                // Ensure line number is in range
+                if !(1..=MAX_LINE_LEN).contains(&line_number) {
                     Err(anyhow!("invalid line number"))?;
                 }
                 return handle_write_line(&mut client, &context, line_number);
@@ -254,6 +254,14 @@ pub fn handle_client_in_abyss(
             }
             "submit-confirmation" => return handle_submit_confirmation(&mut client),
             "submit" => return handle_submit_new(&mut client),
+            read_carta if state.starts_with("read-") => {
+                let uuid = read_carta.trim_start_matches("read-");
+                // Ensure a valid V4 UUID: 32-len + 4 hyphens
+                if uuid.len() != 36 {
+                    Err(anyhow!("malformed uuid"))?;
+                }
+                client.abyss_state.currently = AbyssMode::ViewingCarta(uuid.to_string());
+            }
             _ => (),
         };
         return client.redirect_to_abyss();
@@ -268,7 +276,7 @@ pub fn handle_client_in_abyss(
     let body = match client.abyss_state.currently {
         AbyssMode::FetchingCartas => handle_fetching_cartas(&mut client)?,
         AbyssMode::WritingCarta => handle_writing_carta(&mut client)?,
-        AbyssMode::ViewingCarta(id) => todo!("viewing carta"),
+        AbyssMode::ViewingCarta(ref uuid) => todo!("viewing carta"),
     };
     Ok(windmark::response::Response::success(format!(
         "{flash_document}{body}"

@@ -14,6 +14,9 @@ use rand::distributions::Uniform;
 use rand::prelude::Distribution as _;
 use rand::thread_rng;
 use serde::Serialize;
+use std::collections::HashMap;
+use std::sync::MutexGuard;
+use std::time::{Duration, Instant};
 use std::{
     cell::RefCell,
     rc::Rc,
@@ -24,12 +27,76 @@ use std::{
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 pub type PooledPg = PooledConnection<ConnectionManager<PgConnection>>;
 
+pub const CACHE_INVALIDATION_SECS: u64 = 3600; // 1 hour
+
 lazy_static! {
     pub static ref DATABASE: Arc<Mutex<Database>> = Arc::new(Mutex::new(Database::new(
         establish_connection()
             .and_then(|pool| pool.get().context("getting pool connection"))
             .expect("establish database connection")
     )));
+    pub static ref DATABASE_CACHE: DatabaseCache = Default::default();
+}
+
+/// A database cache to avoid storing heap-allocated objects for every user
+#[derive(Default)]
+pub struct DatabaseCache {
+    pub user: Arc<Mutex<HashMap<i32, Cache<User>>>>,
+    pub carta: Arc<Mutex<HashMap<i32, Cache<Carta>>>>,
+}
+pub struct Cache<T> {
+    pub creation: Instant,
+    pub store: Arc<T>,
+}
+impl DatabaseCache {
+    pub type TCache<T> = Arc<Mutex<HashMap<i32, Cache<T>>>>;
+
+    pub fn lookup_cache<T>(cache: &Self::TCache<T>, id: i32) -> anyhow::Result<Option<Arc<T>>> {
+        let mut guard: MutexGuard<HashMap<_, Cache<T>>> = cache
+            .lock()
+            .map_err(|_| anyhow!("failed to lock db cache mutex"))?;
+
+        let mut remove = false;
+        let mut store = None;
+        if let Some(cache) = guard.get(&id) {
+            if Instant::now().duration_since(cache.creation)
+                > Duration::from_secs(CACHE_INVALIDATION_SECS)
+            {
+                remove = true;
+            } else {
+                store = Some(Arc::clone(&cache.store));
+            }
+        }
+        if remove {
+            guard.remove(&id);
+            return Ok(None);
+        }
+        Ok(store)
+    }
+
+    pub fn insert_cache<T>(cache: &Self::TCache<T>, id: i32, store: T) -> anyhow::Result<Arc<T>> {
+        let mut guard: MutexGuard<HashMap<_, Cache<T>>> = cache
+            .lock()
+            .map_err(|_| anyhow!("failed to lock db cache mutex"))?;
+        let cache = Cache {
+            creation: Instant::now(),
+            store: Arc::new(store),
+        };
+        let store = Arc::clone(&cache.store);
+        guard.insert(id, cache);
+        Ok(store)
+    }
+
+    pub fn get_or_else<T>(
+        cache: &Self::TCache<T>,
+        id: i32,
+        otherwise: &dyn Fn() -> anyhow::Result<T>,
+    ) -> anyhow::Result<Arc<T>> {
+        if let Some(t) = Self::lookup_cache(cache, id)? {
+            return Ok(t);
+        }
+        Self::insert_cache(cache, id, otherwise()?)
+    }
 }
 
 /// Establish a pool and database connection from `DATABASE_URL`
@@ -51,6 +118,7 @@ pub fn establish_connection() -> anyhow::Result<PgPool> {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Carta {
     pub id: i32,
+    pub uuid: String, // 32-len + 4 hyphens
     pub user_id: Option<i32>,
     pub parent: Option<i32>,
     pub title: Option<String>,     // max len: 24
@@ -68,6 +136,7 @@ pub struct Carta {
 pub struct CartaUpdate {
     pub user_id: Option<i32>,
     pub parent: Option<i32>,
+    pub uuid: String,              // 32-len + 4 hyphens
     pub title: Option<String>,     // max len: 24
     pub sender: Option<String>,    // max len: 12
     pub content: String,           // max len: 2048
@@ -142,16 +211,17 @@ impl Database {
             .optional()
             .with_context(|| anyhow!("fetching user by cert hash"))?;
 
-        match user {
-            Some(ref user) => log::trace!(
+        if let Some(user) = user {
+            log::trace!(
                 "user created on {creation} has id {id}",
                 id = user.id,
                 creation = user.creation
-            ),
-            None => log::trace!("certificate not found"),
+            );
+            Ok(Some(user))
+        } else {
+            log::trace!("certificate not found");
+            Ok(None)
         }
-
-        Ok(user)
     }
 
     /// Insert a new user
@@ -196,6 +266,7 @@ impl Database {
         let modification_code = (0..6).map(|_| uniform.sample(&mut rng)).collect();
 
         let update = CartaUpdate {
+            uuid: uuid::Uuid::new_v4().to_string(),
             user_id,
             parent,
             title,

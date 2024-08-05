@@ -19,6 +19,7 @@ serde = { version = "1.0.204", features = ["derive"] }
 tokio = { version = "1.39.2", features = ["full"] }
 twinstar = "0.4.0" # for "ssr templating" with its `Document` struct. we don't use it as any framework.
 urlencoding = "2.1.3"
+uuid = { version = "1.10.0", features = ["v4"] }
 windmark = { version = "0.3.11", features = [
     "logger",
     "pretty_env_logger",
