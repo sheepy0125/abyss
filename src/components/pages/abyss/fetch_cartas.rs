@@ -25,7 +25,7 @@ pub fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String
                     .sender
                     .as_deref()
                     .unwrap_or(&client.lang.write_untitled_sentinel)
-                    .trim_start(),
+                    .trim_end(),
                 title = carta
                     .title
                     .as_deref()

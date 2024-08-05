@@ -135,8 +135,8 @@ pub fn establish_connection() -> anyhow::Result<PgPool> {
 pub struct Carta {
     pub id: i32,
     pub uuid: String, // 32-len + 4 hyphens
-    pub user_id: Option<i32>,
     pub parent: Option<i32>,
+    pub user_id: Option<i32>,
     pub title: Option<String>,     // max len: 24
     pub sender: Option<String>,    // max len: 12
     pub content: String,           // max len: 2048
@@ -150,9 +150,9 @@ pub struct Carta {
 #[diesel(table_name = crate::schema::cartas)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct CartaUpdate {
-    pub user_id: Option<i32>,
+    pub uuid: String, // 32-len + 4 hyphens
     pub parent: Option<i32>,
-    pub uuid: String,              // 32-len + 4 hyphens
+    pub user_id: Option<i32>,
     pub title: Option<String>,     // max len: 24
     pub sender: Option<String>,    // max len: 12
     pub content: String,           // max len: 2048
@@ -368,19 +368,20 @@ impl Database {
         let traverse_downward = fix_fn!(|traverse_downward,
                                          branch: Rc<TreeBranch<Carta>>|
          -> anyhow::Result<()> {
-            log::trace!("traversing downwawrd from branch {branch:?}");
+            log::trace!("traversing downward from branch {branch:?}");
 
-            for child in self_ref.borrow_mut().fetch_carta_children(branch.node.id)? {
+            for child in {
+                // We need this borrow guard to be dropped before we iterate through
+                let mut self_borrow = self_ref.borrow_mut();
+                self_borrow.fetch_carta_children(branch.node.id)?
+            } {
                 let child_branch = TreeBranch {
                     node: child,
                     parent: Some(Rc::downgrade(&branch)),
                     children: vec![].into(),
                 };
                 let child_branch_ref = Rc::new(child_branch);
-                branch
-                    .children
-                    .borrow_mut()
-                    .push(Rc::downgrade(&child_branch_ref));
+                branch.children.borrow_mut().push(child_branch_ref.clone());
                 traverse_downward(child_branch_ref)?;
             }
 

@@ -27,7 +27,10 @@ pub mod tree;
 pub fn result_to_response(result: anyhow::Result<String>) -> windmark::response::Response {
     match result {
         Ok(res) => windmark::response::Response::success(res),
-        Err(e) => windmark::response::Response::temporary_failure(format!("error! {e}")),
+        Err(e) => {
+            log::error!("{e:#?}");
+            windmark::response::Response::temporary_failure(format!("error! {e}"))
+        }
     }
 }
 pub fn windmark_response_result_to_response(
@@ -35,7 +38,10 @@ pub fn windmark_response_result_to_response(
 ) -> windmark::response::Response {
     match result {
         Ok(res) => res,
-        Err(e) => windmark::response::Response::temporary_failure(format!("error! {e}")),
+        Err(e) => {
+            log::error!("{e:#?}");
+            windmark::response::Response::temporary_failure(format!("error! {e}"))
+        }
     }
 }
 pub fn get_lang(context: &RouteContext) -> Option<&'static Lang> {
