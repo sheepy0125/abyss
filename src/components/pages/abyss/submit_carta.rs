@@ -1,4 +1,7 @@
-use crate::{database::DATABASE, state::ClientState};
+use crate::{
+    database::{DatabaseCache, DATABASE, DATABASE_CACHE},
+    state::ClientState,
+};
 
 use anyhow::anyhow;
 use twinstar::Document;
@@ -14,7 +17,10 @@ pub fn handle_submit_confirmation(
     ))
 }
 
-pub fn handle_submit_new(client: &mut ClientState) -> anyhow::Result<windmark::response::Response> {
+pub fn handle_submit_new(
+    client: &mut ClientState,
+    reply_uuid: Option<String>,
+) -> anyhow::Result<windmark::response::Response> {
     let mut database_guard = DATABASE
         .lock()
         .map_err(|_| anyhow!("failed to lock the database"))?;
@@ -28,9 +34,20 @@ pub fn handle_submit_new(client: &mut ClientState) -> anyhow::Result<windmark::r
         return client.redirect_to_abyss();
     }
 
+    let mut parent = None;
+    if let Some(reply_uuid) = reply_uuid {
+        let reply_carta = DatabaseCache::get_or_else(&DATABASE_CACHE.carta, &reply_uuid, &|| {
+            let mut database_guard = DATABASE
+                .lock()
+                .map_err(|_| anyhow!("failed to lock database mutex"))?;
+            database_guard.fetch_carta_uuid(&reply_uuid)
+        })?;
+        parent = Some(reply_carta.id);
+    }
+
     let carta = database_guard.insert_carta(
         Some(client.id() as _),
-        None,
+        parent,
         std::mem::take(&mut client.abyss_state.write_state.lines).join("\n"),
         std::mem::take(&mut client.abyss_state.write_state.title),
         std::mem::take(&mut client.abyss_state.write_state.from),

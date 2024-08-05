@@ -17,14 +17,5 @@ lazy_static! {
         .canonicalize()
         .expect("i18n directory not found");
 }
-
 pub const FOOTER: &str = r#"
-```
-       _
-  __ _| |__  _   _ ___ ___
- / _` | '_ \| | | / __/ __|
-| (_| | |_) | |_| \__ \__ \
- \__,_|_.__/ \__, |___/___/
-             |___/
-```
 "#;

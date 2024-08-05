@@ -63,6 +63,7 @@ pub struct AbyssWriteState {
     pub hide_line_numbers: bool,
     pub title: Option<String>,
     pub from: Option<String>,
+    pub reply: Option<String>,
 }
 impl AbyssState {
     pub fn new(lang: &Lang) -> Self {
@@ -79,7 +80,8 @@ pub enum AbyssMode {
     #[default]
     FetchingCartas,
     WritingCarta,
-    ViewingCarta(String), // uuid
+    ReplyingCarta(String), // uuid
+    ViewingCarta(String),  // uuid
 }
 
 /// Fetch a random carta's title and ID
@@ -252,7 +254,13 @@ pub fn handle_client_in_abyss(
                     unsafe { &mut *std::ptr::addr_of_mut!(client.abyss_state.write_state.title) };
                 return handle_change_field(&mut client, field, MAX_TITLE_LEN, &context);
             }
-            "write" => client.abyss_state.currently = AbyssMode::WritingCarta,
+            "write" => {
+                if client.abyss_state.write_state.reply.is_some() {
+                    client.abyss_state.write_state = Default::default();
+                }
+                client.abyss_state.write_state.reply = None;
+                client.abyss_state.currently = AbyssMode::WritingCarta;
+            }
             write_line if state.starts_with("write-") => {
                 let line_number = write_line.trim_start_matches("write-").parse::<usize>()?;
                 // Ensure line number is in range
@@ -270,7 +278,10 @@ pub fn handle_client_in_abyss(
                     !client.abyss_state.write_state.hide_line_numbers;
             }
             "submit-confirmation" => return handle_submit_confirmation(&mut client),
-            "submit" => return handle_submit_new(&mut client),
+            "submit" => {
+                let reply_uuid = client.abyss_state.write_state.reply.clone();
+                return handle_submit_new(&mut client, reply_uuid);
+            }
             read_carta if state.starts_with("read-") => {
                 let uuid = read_carta.trim_start_matches("read-");
                 // Ensure a valid V4 UUID: 32-len + 4 hyphens
@@ -278,6 +289,24 @@ pub fn handle_client_in_abyss(
                     Err(anyhow!("malformed uuid"))?;
                 }
                 client.abyss_state.currently = AbyssMode::ViewingCarta(uuid.to_string());
+            }
+            reply_carta if state.starts_with("reply-") => {
+                let uuid = reply_carta.trim_start_matches("reply-");
+                // Ensure a valid V4 UUID: 32-len + 4 hyphens
+                if uuid.len() != 36 {
+                    Err(anyhow!("malformed uuid"))?;
+                }
+                if !client
+                    .abyss_state
+                    .write_state
+                    .reply
+                    .as_deref()
+                    .is_some_and(|reply_uuid| reply_uuid == uuid)
+                {
+                    client.abyss_state.write_state = Default::default();
+                }
+                client.abyss_state.write_state.reply = Some(uuid.to_string());
+                client.abyss_state.currently = AbyssMode::ReplyingCarta(uuid.to_string());
             }
             _ => (),
         };
@@ -292,7 +321,11 @@ pub fn handle_client_in_abyss(
     }
     let body = match client.abyss_state.currently {
         AbyssMode::FetchingCartas => handle_fetching_cartas(&mut client)?,
-        AbyssMode::WritingCarta => handle_writing_carta(&mut client)?,
+        AbyssMode::WritingCarta => handle_writing_carta(&mut client, None)?,
+        AbyssMode::ReplyingCarta(ref uuid) => {
+            let uuid = uuid.clone();
+            handle_writing_carta(&mut client, Some(uuid))?
+        }
         AbyssMode::ViewingCarta(ref uuid) => {
             let uuid = uuid.clone();
             handle_viewing_carta(&mut client, uuid)?

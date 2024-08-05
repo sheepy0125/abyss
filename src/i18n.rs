@@ -39,6 +39,8 @@ pub struct Lang {
     pub write_too_long: String,
     pub successful_submission_header: String,
     pub successful_submission_pin_reminder_text: String,
+    pub view_replies_header: String,
+    pub view_add_reply_link: String,
 }
 
 // Dynamic parsing: Load file at runtime with runtime errors

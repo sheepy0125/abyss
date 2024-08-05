@@ -219,8 +219,6 @@ impl Database {
 
     /// Fetch a user from their certificate hash
     pub fn fetch_user(&mut self, cert_hash: &[u8]) -> anyhow::Result<Option<User>> {
-        log::trace!("looking up user from cert hash");
-
         use crate::schema::users::dsl;
         let user = dsl::users
             .filter(dsl::certificate_hash.eq(cert_hash))
@@ -244,8 +242,6 @@ impl Database {
 
     /// Insert a new user
     pub fn insert_user(&mut self, lang: String, cert_hash: &[u8]) -> anyhow::Result<User> {
-        log::trace!("inserting a new user");
-
         let update = UserUpdate {
             certificate_hash: cert_hash.to_vec(),
             creation: SystemTime::now()
@@ -276,8 +272,6 @@ impl Database {
         from: Option<String>,
         lang: &Lang,
     ) -> anyhow::Result<Carta> {
-        log::trace!("inserting a new carta");
-
         // Generate 6-digit modification PIN
         let uniform = Uniform::new('0', '9');
         let mut rng = thread_rng();
@@ -313,8 +307,6 @@ impl Database {
 
     /// Fetch a carta from its ID
     pub fn fetch_carta(&mut self, id: i32) -> anyhow::Result<Carta> {
-        log::trace!("fetching carta with id {id}");
-
         use crate::schema::cartas::dsl;
         let carta = dsl::cartas
             .find(id)
@@ -328,8 +320,6 @@ impl Database {
 
     /// Fetch a carta from its UUID
     pub fn fetch_carta_uuid(&mut self, uuid: &str) -> anyhow::Result<Carta> {
-        log::trace!("fetching carta with uuid {uuid}");
-
         use crate::schema::cartas::dsl;
         let carta = dsl::cartas
             .filter(dsl::uuid.eq(uuid))
@@ -349,8 +339,6 @@ impl Database {
         // the starting id and *then* build the tree, not caching any results. more
         // database calls than necessary occur.
 
-        log::trace!("fetching tree off cartas from carta with id {id}");
-
         let mut current_node = self.fetch_carta(id)?;
 
         // Traverse to top of tree
@@ -368,8 +356,6 @@ impl Database {
         let traverse_downward = fix_fn!(|traverse_downward,
                                          branch: Rc<TreeBranch<Carta>>|
          -> anyhow::Result<()> {
-            log::trace!("traversing downward from branch {branch:?}");
-
             for child in {
                 // We need this borrow guard to be dropped before we iterate through
                 let mut self_borrow = self_ref.borrow_mut();
@@ -390,7 +376,6 @@ impl Database {
 
         let tree_ref = Rc::new(tree);
         traverse_downward(Rc::clone(&tree_ref))?;
-        log::trace!("tree: {tree_ref:?}");
 
         Rc::into_inner(tree_ref).context("tree had more than one ref")
     }

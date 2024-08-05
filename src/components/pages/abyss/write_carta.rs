@@ -1,7 +1,4 @@
-use crate::{
-    abyss::{AbyssMode, MAX_NUM_LINES},
-    state::ClientState,
-};
+use crate::{abyss::MAX_NUM_LINES, state::ClientState};
 
 use lazy_static::lazy_static;
 use twinstar::{document::HeadingLevel, Document};
@@ -15,12 +12,10 @@ lazy_static! {
 }
 
 // Write carta page UI
-pub fn handle_writing_carta(client: &mut ClientState) -> anyhow::Result<String> {
-    if !matches!(client.abyss_state.currently, AbyssMode::WritingCarta) {
-        client.abyss_state.write_state.lines.clear();
-    }
-    client.abyss_state.currently = AbyssMode::WritingCarta;
-
+pub fn handle_writing_carta(
+    client: &mut ClientState,
+    reply_uuid: Option<String>,
+) -> anyhow::Result<String> {
     let mut document = Document::new();
     document
         .add_heading(HeadingLevel::H2, &client.lang.write_header)
@@ -92,6 +87,9 @@ pub fn handle_writing_carta(client: &mut ClientState) -> anyhow::Result<String> 
     document
         .add_blank_line()
         .add_link("submit-confirmation", &client.lang.write_submit_link);
+    if let Some(reply_uuid) = reply_uuid {
+        document.add_link(format!("read-{reply_uuid}").as_str(), "<--");
+    }
     document
         .add_blank_line()
         .add_link("help", &client.lang.write_help_link)

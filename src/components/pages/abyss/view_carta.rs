@@ -46,6 +46,9 @@ pub fn handle_viewing_carta(client: &mut ClientState, uuid: String) -> anyhow::R
     document.add_heading(HeadingLevel::H3, "===");
 
     // Display reply tree
+    document
+        .add_blank_line()
+        .add_heading(HeadingLevel::H3, &client.lang.view_replies_header);
     let document_ref = RefCell::new(document);
     #[allow(clippy::unused_unit)] // fix_fn needs a return type
     let reply_tree = fix_fn!(
@@ -67,6 +70,10 @@ pub fn handle_viewing_carta(client: &mut ClientState, uuid: String) -> anyhow::R
     );
     reply_tree(0, Rc::new(carta_tree));
     let mut document = document_ref.into_inner();
+    document.add_blank_line().add_link(
+        format!("reply-{uuid}").as_str(),
+        &client.lang.view_add_reply_link,
+    );
 
     document
         .add_blank_line()
