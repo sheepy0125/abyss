@@ -7,9 +7,9 @@ diesel::table! {
         uuid -> Bpchar,
         parent -> Nullable<Int4>,
         user_id -> Nullable<Int4>,
-        #[max_length = 24]
+        #[max_length = 36]
         title -> Nullable<Bpchar>,
-        #[max_length = 12]
+        #[max_length = 24]
         sender -> Nullable<Bpchar>,
         #[max_length = 2048]
         content -> Varchar,
@@ -20,6 +20,7 @@ diesel::table! {
         #[max_length = 2]
         lang -> Bpchar,
         random_accessible -> Bool,
+        reports -> Int4,
     }
 }
 

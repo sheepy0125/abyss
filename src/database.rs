@@ -145,6 +145,7 @@ pub struct Carta {
     pub modification: Option<i32>, // unix timestamp
     pub lang: String,              // 2-digit code, e.g. `en`
     pub random_accessible: bool,
+    pub reports: i32,
 }
 #[derive(Insertable, Serialize, Clone, Debug)]
 #[diesel(table_name = crate::schema::cartas)]
@@ -161,9 +162,10 @@ pub struct CartaUpdate {
     pub modification: Option<i32>, // unix timestamp
     pub lang: String,              // 2 digit code, e.g. `en`
     pub random_accessible: bool,
+    pub reports: i32,
 }
-pub const MAX_TITLE_LEN: usize = 24;
-pub const MAX_FROM_LEN: usize = 12;
+pub const MAX_TITLE_LEN: usize = 32;
+pub const MAX_FROM_LEN: usize = 24;
 
 #[derive(Queryable, Selectable, Serialize, Clone, Debug)]
 #[diesel(table_name = crate::schema::users)]
@@ -262,6 +264,19 @@ impl Database {
         Ok(user)
     }
 
+    /// Report a carta
+    pub fn report_carta(&mut self, uuid: &str) -> anyhow::Result<()> {
+        use crate::schema::cartas::dsl;
+        diesel::update(dsl::cartas.filter(dsl::uuid.eq(uuid)))
+            .set(dsl::reports.eq(dsl::reports + 1))
+            .execute(&mut self.connection)
+            .context("reporting a carta")?;
+
+        log::trace!("reported carta with uuid {uuid}");
+
+        Ok(())
+    }
+
     /// Insert a new carta
     pub fn insert_carta(
         &mut self,
@@ -292,6 +307,7 @@ impl Database {
                 .as_secs() as _,
             modification: None,
             modification_code,
+            reports: 0,
         };
 
         use crate::schema::cartas::dsl;

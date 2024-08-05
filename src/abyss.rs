@@ -190,6 +190,9 @@ fn handle_change_field(
 
     // User input
     if let Some(query) = context.url.query() {
+        let query = decode(query).context("malformed input")?;
+        let query = query.trim();
+
         if let Some(res) = validate_len(client, query, max_len) {
             return Ok(res);
         };
@@ -200,7 +203,7 @@ fn handle_change_field(
             return client.redirect_to_abyss();
         }
 
-        *field = Some(decode(query).context("malformed input")?.to_string());
+        *field = Some(query.to_string());
         return client.redirect_to_abyss();
     }
 
@@ -208,8 +211,20 @@ fn handle_change_field(
         &client.lang.write_new_field,
     ))
 }
+/// Handle reporting a carta
+fn handle_report_carta(client: &mut ClientState, uuid: &str) -> anyhow::Result<()> {
+    let mut database_guard = DATABASE
+        .lock()
+        .map_err(|_| anyhow!("failed to lock database mutex"))?;
+    database_guard.report_carta(uuid)?;
+    client
+        .abyss_state
+        .to_flash
+        .push(client.lang.report_submitted_flash.clone());
+    Ok(())
+}
 
-// `/abyss` endpoint
+/// `/abyss` endpoint
 pub fn handle_client_in_abyss(
     context: RouteContext,
 ) -> anyhow::Result<windmark::response::Response> {
@@ -284,18 +299,10 @@ pub fn handle_client_in_abyss(
             }
             read_carta if state.starts_with("read-") => {
                 let uuid = read_carta.trim_start_matches("read-");
-                // Ensure a valid V4 UUID: 32-len + 4 hyphens
-                if uuid.len() != 36 {
-                    Err(anyhow!("malformed uuid"))?;
-                }
                 client.abyss_state.currently = AbyssMode::ViewingCarta(uuid.to_string());
             }
             reply_carta if state.starts_with("reply-") => {
                 let uuid = reply_carta.trim_start_matches("reply-");
-                // Ensure a valid V4 UUID: 32-len + 4 hyphens
-                if uuid.len() != 36 {
-                    Err(anyhow!("malformed uuid"))?;
-                }
                 if !client
                     .abyss_state
                     .write_state
@@ -307,6 +314,10 @@ pub fn handle_client_in_abyss(
                 }
                 client.abyss_state.write_state.reply = Some(uuid.to_string());
                 client.abyss_state.currently = AbyssMode::ReplyingCarta(uuid.to_string());
+            }
+            report_carta if state.starts_with("report-") => {
+                let uuid = report_carta.trim_start_matches("report-");
+                handle_report_carta(&mut client, uuid)?;
             }
             _ => (),
         };

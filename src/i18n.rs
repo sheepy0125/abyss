@@ -41,6 +41,7 @@ pub struct Lang {
     pub successful_submission_pin_reminder_text: String,
     pub view_replies_header: String,
     pub view_add_reply_link: String,
+    pub report_submitted_flash: String,
 }
 
 // Dynamic parsing: Load file at runtime with runtime errors
