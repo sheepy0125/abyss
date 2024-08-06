@@ -25,18 +25,3 @@ diesel::table! {
         ip -> Varchar,
     }
 }
-
-diesel::table! {
-    users (id) {
-        id -> Int4,
-        certificate_hash -> Bytea,
-        #[max_length = 2]
-        lang -> Bpchar,
-        creation -> Int4,
-    }
-}
-
-diesel::allow_tables_to_appear_in_same_query!(
-    cartas,
-    users,
-);
