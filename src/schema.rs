@@ -21,6 +21,8 @@ diesel::table! {
         lang -> Bpchar,
         random_accessible -> Bool,
         reports -> Int4,
+        #[max_length = 45]
+        ip -> Varchar,
     }
 }
 

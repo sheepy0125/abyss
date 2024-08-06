@@ -305,7 +305,7 @@ pub fn handle_client_in_abyss(
             "submit-confirmation" => return handle_submit_confirmation(&mut client),
             "submit" => {
                 let reply_uuid = client.abyss_state.write_state.reply.clone();
-                return handle_submit_new(&mut client, reply_uuid);
+                return handle_submit_new(&mut client, &context, reply_uuid);
             }
             read_carta if state.starts_with("read-") => {
                 let uuid = read_carta.trim_start_matches("read-");

@@ -83,8 +83,8 @@ pub struct Lang {
     pub code_input: String,
     pub deleted: String,
     pub removed: String,
-    pub deletion_failure: String,
     pub deletion_successful: String,
+    pub deletion_failure: String,
 }
 
 // Dynamic parsing: Load file at runtime with runtime errors

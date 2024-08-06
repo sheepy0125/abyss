@@ -76,6 +76,6 @@
     code_input: "Enter the access code",
     deleted: "(deleted)",
     removed: "(removed by admin)",
-    deletion_failure: "Failed, invalid code?",
     deletion_successful: "Succesfully removed content. Please allow some time for it to be removed from cache.",
+    deletion_failure: "Failed, invalid code?",
 )

@@ -146,6 +146,7 @@ pub struct Carta {
     pub lang: String,              // 2-digit code, e.g. `en`
     pub random_accessible: bool,
     pub reports: i32,
+    pub ip: String,
 }
 #[derive(Insertable, Serialize, Clone, Debug)]
 #[diesel(table_name = crate::schema::cartas)]
@@ -163,6 +164,7 @@ pub struct CartaUpdate {
     pub lang: String,              // 2 digit code, e.g. `en`
     pub random_accessible: bool,
     pub reports: i32,
+    pub ip: String,
 }
 pub const MAX_TITLE_LEN: usize = 32;
 pub const MAX_FROM_LEN: usize = 24;
@@ -299,6 +301,7 @@ impl Database {
         title: Option<String>,
         from: Option<String>,
         lang: &Lang,
+        ip: String,
     ) -> anyhow::Result<Carta> {
         // Generate 6-digit modification PIN
         let uniform = Uniform::new('0', '9');
@@ -321,6 +324,7 @@ impl Database {
             modification: None,
             modification_code,
             reports: 0,
+            ip,
         };
 
         use crate::schema::cartas::dsl;

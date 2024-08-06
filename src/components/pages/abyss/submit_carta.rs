@@ -5,6 +5,7 @@ use crate::{
 
 use anyhow::anyhow;
 use twinstar::{document::HeadingLevel, Document};
+use windmark::context::RouteContext;
 
 pub fn handle_submit_confirmation(
     client: &mut ClientState,
@@ -21,6 +22,7 @@ pub fn handle_submit_confirmation(
 
 pub fn handle_submit_new(
     client: &mut ClientState,
+    context: &RouteContext,
     reply_uuid: Option<String>,
 ) -> anyhow::Result<windmark::response::Response> {
     // Ensure carta isn't blank!!
@@ -54,6 +56,10 @@ pub fn handle_submit_new(
         std::mem::take(&mut client.abyss_state.write_state.title),
         std::mem::take(&mut client.abyss_state.write_state.from),
         client.lang,
+        context
+            .peer_address
+            .map(|ip| ip.ip().to_string())
+            .unwrap_or("0.0.0.0".to_string()),
     )?;
 
     Ok(windmark::response::Response::success(
