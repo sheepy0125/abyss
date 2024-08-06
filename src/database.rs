@@ -293,6 +293,7 @@ impl Database {
     }
 
     /// Insert a new carta
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_carta(
         &mut self,
         user_id: Option<i32>,

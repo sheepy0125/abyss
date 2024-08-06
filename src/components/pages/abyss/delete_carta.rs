@@ -1,4 +1,4 @@
-use crate::{abyss::CartaInformation, database::DATABASE, i18n::Lang, state::ClientState};
+use crate::{database::DATABASE, i18n::Lang};
 
 use anyhow::{anyhow, Context as _};
 use twinstar::{document::HeadingLevel, Document};
@@ -22,6 +22,11 @@ pub fn handle_deleting_cartas(
             .split_at_checked(6)
             .context("invalid access code format")?;
         let id = id.parse::<usize>().context("invalid access code format")?;
+
+        // Don't allow deleting the default post (which has its code public)
+        if id == 0 {
+            return Ok(windmark::response::Response::temporary_redirect("failure"));
+        }
 
         let mut database_guard = DATABASE
             .lock()

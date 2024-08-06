@@ -49,7 +49,8 @@ pub fn handle_viewing_carta(client: &mut ClientState, uuid: String) -> anyhow::R
     document.add_heading(
         HeadingLevel::H3,
         format!(
-            "{from} - {title}",
+            "{time} / {from} - {title}",
+            time = display_unix_timestamp(carta.modification.unwrap_or(carta.creation) as _),
             from = display_field(&carta.sender, &client.lang.from_sentinel),
             title = display_field(&carta.title, &client.lang.untitled_sentinel)
         ),
