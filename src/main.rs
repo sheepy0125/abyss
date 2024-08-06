@@ -89,10 +89,16 @@ async fn main() -> anyhow::Result<()> {
         };
         windmark_response_result_to_response(handle_client_in_abyss(context))
     };
+    let delete_handle = |context| {
+        let lang = lang!(context);
+        windmark_response_result_to_response(
+            components::pages::abyss::delete_carta::handle_deleting_cartas(context, lang),
+        )
+    };
 
     // Fix a link to add a trailing slash
     let fix = |context: RouteContext| {
-        windmark::response::Response::temporary_redirect(format!("{}/", context.url.to_string()))
+        windmark::response::Response::temporary_redirect(format!("{}/", context.url))
     };
     // Fix a link to remove a trailing slash
     let rev_fix = |context: RouteContext| {
@@ -111,8 +117,6 @@ async fn main() -> anyhow::Result<()> {
         .mount("/:lang", fix)
         .mount("/:lang/", index_handle)
         // terms
-        .mount("/terms", fix)
-        .mount("/terms/", terms_handle)
         .mount("/:lang/terms", fix)
         .mount("/:lang/terms/", terms_handle)
         // abyss
@@ -120,6 +124,11 @@ async fn main() -> anyhow::Result<()> {
         .mount("/:lang/abyss/", abyss_handle)
         .mount("/:lang/abyss/:state", abyss_handle)
         .mount("/:lang/abyss/:state/", rev_fix)
+        // delete
+        .mount("/:lang/delete", fix)
+        .mount("/:lang/delete/", delete_handle)
+        .mount("/:lang/delete/:state", delete_handle)
+        .mount("/:lang/delete/:state/", rev_fix)
         .add_footer(|_| FOOTER.to_string())
         // route unmatched
         .set_error_handler(|_context| {

@@ -20,6 +20,7 @@ pub struct Lang {
     pub abyss_view_link: String,
     pub abyss_delete_link: String,
     /* Terms page */
+    pub terms_link: String,
     pub tos_header: String,
     pub rules_header: String,
     pub rules_preface: String,
@@ -71,9 +72,19 @@ pub struct Lang {
     pub view_add_reply_link: String,
     pub view_report_link: String,
     pub report_submitted_flash: String,
+    pub delete_code_text: String,
     /* View cartas page */
     pub all_header: String,
-    pub all_empty: String,
+    pub all_empty_text: String,
+    /* Delete cartas page */
+    pub delete_header: String,
+    pub delete_instructions_text: String,
+    pub delete_code_link: String,
+    pub code_input: String,
+    pub deleted: String,
+    pub removed: String,
+    pub deletion_failure: String,
+    pub deletion_successful: String,
 }
 
 // Dynamic parsing: Load file at runtime with runtime errors

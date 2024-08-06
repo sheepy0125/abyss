@@ -63,11 +63,10 @@ pub fn handle_submit_new(
                 &client.lang.successful_submission_header,
             )
             .add_text(&client.lang.successful_submission_modification_text)
-            .add_text(format!(
-                "ID: {id}; PIN: {pin}",
-                id = carta.id,
-                pin = carta.modification_code
-            ))
+            .add_heading(
+                HeadingLevel::H3,
+                format!("{pin}{id}", id = carta.id, pin = carta.modification_code),
+            )
             .add_blank_line()
             .add_link("fetch", &client.lang.return_link),
     ))

@@ -86,6 +86,21 @@ pub fn handle_viewing_carta(client: &mut ClientState, uuid: String) -> anyhow::R
     let mut document = document_ref.into_inner();
     document.add_heading(HeadingLevel::H3, "===");
 
+    if carta
+        .user_id
+        .is_some_and(|carta_id| carta_id == client.id() as _)
+    {
+        document
+            .add_blank_line()
+            .add_text(format!(
+                "{text} {pin}{id}",
+                text = &client.lang.delete_code_text,
+                pin = carta.modification_code,
+                id = carta.id
+            ))
+            .add_link("../delete", &client.lang.abyss_delete_link);
+    }
+
     document
         .add_blank_line()
         .add_link(

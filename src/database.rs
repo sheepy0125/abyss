@@ -347,6 +347,35 @@ impl Database {
         Ok(carta)
     }
 
+    /// Redact or delete a carta's content if the ID and pin match
+    pub fn redact_carta(
+        &mut self,
+        id: i32,
+        pin: &str,
+        redact_text: &str,
+    ) -> anyhow::Result<Option<Carta>> {
+        use crate::schema::cartas::dsl;
+        let carta = diesel::update(
+            dsl::cartas
+                .filter(dsl::modification_code.eq(pin))
+                .filter(dsl::id.eq(id)),
+        )
+        .set((
+            dsl::random_accessible.eq(false),
+            dsl::user_id.eq(Option::<i32>::None),
+            dsl::content.eq(redact_text),
+            dsl::title.eq(Some(redact_text)),
+            dsl::sender.eq(Some(redact_text)),
+            dsl::modification.eq(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i32),
+        ))
+        .get_result(&mut self.connection)
+        .optional()?;
+
+        log::trace!("redacted carta with id {id} to `{redact_text}`");
+
+        Ok(carta)
+    }
+
     /// Fetch cartas from a user ID
     pub fn fetch_cartas(&mut self, id: i32) -> anyhow::Result<Vec<Carta>> {
         use crate::schema::cartas::dsl;

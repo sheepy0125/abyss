@@ -29,7 +29,7 @@ pub fn handle_viewing_cartas(client: &mut ClientState) -> anyhow::Result<String>
         );
     }
     if cartas.is_empty() {
-        document.add_text(&client.lang.all_empty);
+        document.add_text(&client.lang.all_empty_text);
     }
 
     document

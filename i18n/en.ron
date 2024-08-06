@@ -13,6 +13,7 @@
     abyss_view_link: "View messages that you've written?",
     abyss_delete_link: "Delete a message you've written?",
 /* Terms page */
+    terms_link: "Terms of Service?",
     tos_header: "ToS, rules, spying, and you!",
     rules_header: "Laws of the Abyss",
     rules_preface: "This capsule relies on user-submitted content. Please, we need you to make this work! The administrator (@sheepy:cinderblock.moe on Matrix) is entitled to blacklist users (certificates and IP-rules) and redact messages that've been reported to her.",
@@ -41,7 +42,7 @@
 /* Submit page */
     empty_carta_error: "You gotta provide at least *some* text!",
     successful_submission_header: "Submitted",
-    successful_submission_modification_text: "Your scream has been heard. If you ever want to take it back, remember the following: ",
+    successful_submission_modification_text: "Your scream has been heard. If you ever want to take it back, remember the following code:",
 /* Write page */
     write_help_flash: "This is a \"text editor\" of sorts. Each line is a link; click on a line to change its contents. Newlines and line numbers are shown ephemerally and will not appear in a submitted post.",
     write_header: "You're screaming into the Abyss",
@@ -64,7 +65,17 @@
     view_add_reply_link: "Scream back",
     view_report_link: "Report to the webmaster?",
     report_submitted_flash: "Your report has been submitted.",
+    delete_code_text: "This is tied to your certificate! To delete it, use the code:",
 /* View cartas page */
     all_header: "Fish for your screams",
-    all_empty: "(nothing is tied to your account!)"
+    all_empty_text: "(nothing is tied to your certificate!)",
+/* Delete cartas page */
+    delete_header: "Dump gasoline into the Abyss",
+    delete_instructions_text: "When you submitted a message, you were given an access code that can be used to delete a post.\nThis code is accessible to messages that are still tied to your certificate. Consult the ToS for more information.",
+    delete_code_link: "Enter access code",
+    code_input: "Enter the access code",
+    deleted: "(deleted)",
+    removed: "(removed by admin)",
+    deletion_failure: "Failed, invalid code?",
+    deletion_successful: "Succesfully removed content. Please allow some time for it to be removed from cache.",
 )

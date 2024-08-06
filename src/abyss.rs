@@ -262,11 +262,7 @@ pub fn handle_client_in_abyss(
     log::debug!("handling client with id {id} in abyss");
 
     // Handle state changes
-    if let Some(state) = context
-        .parameters
-        .get("state")
-        .map(|str_ref| str_ref.as_str())
-    {
+    if let Some(state) = context.parameters.get("state").map(String::as_str) {
         match state {
             "fetch" => client.abyss_state.currently = AbyssMode::FetchingCartas,
             "peek" => client.abyss_state.currently = handle_peek_state_change(&mut client)?,
