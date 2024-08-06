@@ -1,4 +1,4 @@
-use crate::{abyss::MAX_NUM_LINES, state::ClientState};
+use crate::{consts::MAX_NUM_LINES, state::ClientState};
 
 use lazy_static::lazy_static;
 use twinstar::{document::HeadingLevel, Document};

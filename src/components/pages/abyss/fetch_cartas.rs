@@ -2,6 +2,8 @@ use crate::{abyss::CartaInformation, state::ClientState};
 
 use twinstar::{document::HeadingLevel, Document};
 
+use super::view_carta::display_field;
+
 /// Fetch cartas page UI
 pub fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String> {
     let mut document = Document::new();
@@ -13,27 +15,15 @@ pub fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String
         .add_blank_line();
 
     document.add_heading(HeadingLevel::H3, "===");
-    for (idx, CartaInformation { carta, .. }) in client
-        .abyss_state
-        .top_level_cartas_loaded
-        .iter()
-        .enumerate()
-    {
+    for CartaInformation { carta, .. } in &client.abyss_state.top_level_cartas_loaded {
         document.add_link(
             format!("read-{uuid}", uuid = carta.uuid).as_str(),
             format!(
                 "{from} - {title}",
-                from = carta
-                    .sender
-                    .as_deref()
-                    .unwrap_or(&client.lang.untitled_sentinel)
-                    .trim_end(),
-                title = carta.title.as_deref().unwrap_or(&client.lang.from_sentinel)
+                from = display_field(&carta.sender, &client.lang.from_sentinel),
+                title = display_field(&carta.title, &client.lang.untitled_sentinel)
             ),
         );
-        if idx >= 10 {
-            break;
-        }
     }
     document
         .add_heading(HeadingLevel::H3, "===")

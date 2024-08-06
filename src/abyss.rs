@@ -9,8 +9,8 @@ use crate::{
             write_carta::handle_writing_carta,
         },
     },
-    consts::DEFAULT_CARTA,
-    database::{Carta, DatabaseCache, DATABASE, DATABASE_CACHE, MAX_FROM_LEN, MAX_TITLE_LEN},
+    consts::{DEFAULT_CARTA, MAX_FROM_LEN, MAX_LINE_LEN, MAX_TITLE_LEN},
+    database::{Carta, DatabaseCache, DATABASE, DATABASE_CACHE},
     get_lang,
     i18n::{Lang, ENGLISH},
     state::ClientState,
@@ -21,9 +21,6 @@ use std::{collections::VecDeque, sync::Arc};
 use twinstar::Document;
 use urlencoding::decode;
 use windmark::context::RouteContext;
-
-pub const MAX_LINE_LEN: usize = 256;
-pub const MAX_NUM_LINES: usize = 50;
 
 /// Helper function to validate an input's length
 fn validate_len(

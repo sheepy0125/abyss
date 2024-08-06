@@ -56,7 +56,7 @@ pub fn handle_viewing_carta(client: &mut ClientState, uuid: String) -> anyhow::R
         ),
     );
     for line in carta.content.split('\n') {
-        document.add_text(line);
+        document.add_preformatted(line);
     }
     document.add_heading(HeadingLevel::H3, "===");
 

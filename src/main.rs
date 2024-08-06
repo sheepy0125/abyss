@@ -8,9 +8,11 @@ use crate::consts::FOOTER;
 use crate::i18n::{lookup_lang_from_code, Lang};
 
 use components::certificate::require_certificate;
+use consts::PERIODIC_PRUNE_SECS;
 use dotenvy::dotenv;
 use i18n::ensure_lazily_loaded_languages_work;
 use state::ClientState;
+use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::spawn;
 use windmark::context::RouteContext;
@@ -44,19 +46,35 @@ pub fn windmark_response_result_to_response(
         }
     }
 }
+
+pub fn display_ip(ip: Option<&SocketAddr>) -> String {
+    ip.map(|ip| ip.ip().to_string())
+        .unwrap_or("0.0.0.0".to_string())
+}
+
 pub fn get_lang(context: &RouteContext) -> Option<&'static Lang> {
     context
         .parameters
         .get("lang")
         .and_then(|str_ref| lookup_lang_from_code(str_ref))
 }
-
+/// Redirect to the English page if no lang is found
 macro_rules! lang {
     ($context:expr) => {
         match get_lang(&$context) {
             Some(lang) => lang,
             None => return windmark::response::Response::temporary_redirect("/en/"),
         }
+    };
+}
+
+macro_rules! log {
+    ($context:expr) => {
+        log::info!(
+            "{ip} - {route}",
+            ip = display_ip($context.peer_address.as_ref()),
+            route = $context.url.path(),
+        )
     };
 }
 
@@ -69,17 +87,19 @@ async fn main() -> anyhow::Result<()> {
     // Periodically prune old clients
     spawn(async move {
         loop {
-            tokio::time::sleep(Duration::from_secs(60)).await; // xxx: debug
+            tokio::time::sleep(Duration::from_secs(PERIODIC_PRUNE_SECS as _)).await;
             ClientState::prune_clients().unwrap();
         }
     });
 
     let index_handle = |context| {
         let lang = lang!(context);
+        log!(context);
         result_to_response(components::pages::index::index(context, lang))
     };
     let terms_handle = |context| {
         let lang = lang!(context);
+        log!(context);
         result_to_response(components::pages::terms::terms(context, lang))
     };
     let abyss_handle = |context| {
@@ -87,10 +107,12 @@ async fn main() -> anyhow::Result<()> {
         if let Err(resp) = require_certificate(&context, lang) {
             return resp;
         };
+        log!(context);
         windmark_response_result_to_response(handle_client_in_abyss(context))
     };
     let delete_handle = |context| {
         let lang = lang!(context);
+        log!(context);
         windmark_response_result_to_response(
             components::pages::abyss::delete_carta::handle_deleting_cartas(context, lang),
         )
@@ -113,6 +135,7 @@ async fn main() -> anyhow::Result<()> {
         .enable_default_logger(false)
         .set_fix_path(false)
         // index
+        .mount(" ", fix)
         .mount("/", index_handle)
         .mount("/:lang", fix)
         .mount("/:lang/", index_handle)

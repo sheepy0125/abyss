@@ -170,7 +170,7 @@ impl ClientState {
             .map_err(|_| anyhow!("failed to lock clients rwlock"))?;
         for cert_ref in to_prune {
             let (id, _state) = guard.remove(&cert_ref[..]).context("pruning client")?;
-            log::trace!("pruning client with id {id}");
+            log::debug!("pruning client with id {id}");
         }
         Ok(())
     }

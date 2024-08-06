@@ -27,5 +27,10 @@ lazy_static! {
     };
 }
 
-pub const FOOTER: &str = r#"
-"#;
+pub const MAX_LINE_LEN: usize = 2048;
+pub const MAX_NUM_LINES: usize = 50;
+pub const MAX_TITLE_LEN: usize = 32; // must match database!
+pub const MAX_FROM_LEN: usize = 24; // must match database!
+pub const PERIODIC_PRUNE_SECS: usize = 600; // 10 minutes
+
+pub const FOOTER: &str = "sheepy.moe <3";

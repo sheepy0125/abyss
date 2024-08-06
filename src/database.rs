@@ -166,8 +166,6 @@ pub struct CartaUpdate {
     pub reports: i32,
     pub ip: String,
 }
-pub const MAX_TITLE_LEN: usize = 32;
-pub const MAX_FROM_LEN: usize = 24;
 
 #[derive(Queryable, Selectable, Serialize, Clone, Debug)]
 #[diesel(table_name = crate::schema::users)]
