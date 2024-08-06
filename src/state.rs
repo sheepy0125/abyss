@@ -69,6 +69,17 @@ impl ClientState {
     pub fn id(&self) -> usize {
         self.id
     }
+    /// Update language in client database
+    pub fn update_lang(&mut self, lang: &'static Lang) -> anyhow::Result<()> {
+        let mut database_guard = DATABASE
+            .lock()
+            .map_err(|_| anyhow!("failed to lock database mutex"))?;
+        database_guard.change_language(self.id as _, &lang.code)?;
+
+        self.lang = lang;
+
+        Ok(())
+    }
 }
 
 impl ClientState {

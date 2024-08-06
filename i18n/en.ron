@@ -10,6 +10,8 @@
     index_about_text: "You can scream into the Abyss, and the Abyss can scream back.\nWrite anonymous messages into the Abyss, receive random messages others have written, and continue the cycle by replying to them.",
     abyss_enter_link: "Descend?",
     abyss_terms_link: "(before you descend, read the ToS)",
+    abyss_view_link: "View messages that you've written?",
+    abyss_delete_link: "Delete a message you've written?",
 /* Terms page */
     tos_header: "ToS, rules, spying, and you!",
     rules_header: "Laws of the Abyss",
@@ -27,12 +29,11 @@
     data_2: "You are allowed, through this capsule, to delete messages tied to your certificate hash or that you have a ID and PIN for. Deletion entails redacting the message body, \"title,\" and \"from\" fields along with anonymizing any metadata associated with a message.",
     data_3: "If you wish to delete a message that is not tied to a currently accessible certificate; a message that you don't have an ID and/or PIN for; a message that can be tied to you through other means (e.g. IP, browser history), contact \"abyss@sheepy.moe\" with a case report.",
     data_4: "Logs include IP addresses and routes.",
-/* Abyss page */
+/* Fetch page */
     abyss_header: "You're staring into the Abyss",
     fetch_link: "Listen to the Abyss?",
     write_link: "Scream into the Abyss?",
     return_link: "Climb out?",
-/* Fetch page */
     no_new_cartas_status: "You've seen them all.",
 /* Submit confirmation page */
     submit_confirmation_link: "Confirm submission?",
@@ -63,4 +64,7 @@
     view_add_reply_link: "Scream back",
     view_report_link: "Report to the webmaster?",
     report_submitted_flash: "Your report has been submitted.",
+/* View cartas page */
+    all_header: "Fish for your screams",
+    all_empty: "(nothing is tied to your account!)"
 )

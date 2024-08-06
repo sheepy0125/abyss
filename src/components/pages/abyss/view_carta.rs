@@ -1,4 +1,8 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    time::{Duration, UNIX_EPOCH},
+};
 
 use crate::{
     database::{Carta, DatabaseCache, DATABASE, DATABASE_CACHE},
@@ -7,11 +11,17 @@ use crate::{
 };
 
 use anyhow::{anyhow, Context};
+use chrono::{DateTime, Utc};
 use fix_fn::fix_fn;
 use twinstar::{document::HeadingLevel, Document};
 
 pub fn display_field<'a>(field: &'a Option<String>, sentinel: &'a str) -> &'a str {
     field.as_deref().unwrap_or(sentinel).trim_end()
+}
+pub fn display_unix_timestamp(timestamp: u32) -> String {
+    let timestamp = UNIX_EPOCH + Duration::from_secs(timestamp as _);
+    let datetime = DateTime::<Utc>::from(timestamp);
+    datetime.format("%Y-%m-%d %H:%M:%S GMT").to_string()
 }
 
 /// Fetch cartas page UI

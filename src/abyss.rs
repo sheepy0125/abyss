@@ -5,6 +5,7 @@ use crate::{
             fetch_cartas::handle_fetching_cartas,
             submit_carta::{handle_submit_confirmation, handle_submit_new},
             view_carta::handle_viewing_carta,
+            view_cartas::handle_viewing_cartas,
             write_carta::handle_writing_carta,
         },
     },
@@ -85,7 +86,8 @@ pub enum AbyssMode {
     FetchingCartas,
     WritingCarta,
     ReplyingCarta(String), // uuid
-    ViewingCarta(String),  // uuid
+    ViewingCartas,
+    ViewingCarta(String), // uuid
 }
 
 /// Fetch a carta's title and ID. An id of None designates a random carta to be fetched.
@@ -252,7 +254,10 @@ pub fn handle_client_in_abyss(
     if lang.is_none() {
         return client.redirect_to_abyss();
     }
-    client.lang = lang.unwrap_or_else(|| &ENGLISH);
+    let lang = lang.unwrap_or_else(|| &ENGLISH);
+    if client.lang.code != lang.code {
+        client.update_lang(lang)?;
+    }
 
     log::debug!("handling client with id {id} in abyss");
 
@@ -265,6 +270,7 @@ pub fn handle_client_in_abyss(
         match state {
             "fetch" => client.abyss_state.currently = AbyssMode::FetchingCartas,
             "peek" => client.abyss_state.currently = handle_peek_state_change(&mut client)?,
+            "view" => client.abyss_state.currently = AbyssMode::ViewingCartas,
             "from" => {
                 // "totally safe"
                 let field =
@@ -347,6 +353,7 @@ pub fn handle_client_in_abyss(
             let uuid = uuid.clone();
             handle_viewing_carta(&mut client, uuid)?
         }
+        AbyssMode::ViewingCartas => handle_viewing_cartas(&mut client)?,
     };
     Ok(windmark::response::Response::success(format!(
         "{flash_document}{body}"

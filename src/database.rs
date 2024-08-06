@@ -264,6 +264,19 @@ impl Database {
         Ok(user)
     }
 
+    /// Change the language for a user
+    pub fn change_language(&mut self, id: i32, code: &str) -> anyhow::Result<()> {
+        use crate::schema::users::dsl;
+        diesel::update(dsl::users.find(id))
+            .set(dsl::lang.eq(code))
+            .execute(&mut self.connection)
+            .context("changing lang for a user")?;
+
+        log::trace!("changed user with id {id}'s language to {code}");
+
+        Ok(())
+    }
+
     /// Report a carta
     pub fn report_carta(&mut self, uuid: &str) -> anyhow::Result<()> {
         use crate::schema::cartas::dsl;
@@ -329,9 +342,22 @@ impl Database {
             .get_result(&mut self.connection)
             .with_context(|| anyhow!("fetching carta with id {id}"))?;
 
-        log::trace!("fetched carta with id {id}: {carta:?}");
+        log::trace!("fetched carta with id {id}");
 
         Ok(carta)
+    }
+
+    /// Fetch cartas from a user ID
+    pub fn fetch_cartas(&mut self, id: i32) -> anyhow::Result<Vec<Carta>> {
+        use crate::schema::cartas::dsl;
+        let cartas = dsl::cartas
+            .filter(dsl::user_id.eq(Some(id)))
+            .get_results(&mut self.connection)
+            .with_context(|| anyhow!("fetching carta with from user id {id}"))?;
+
+        log::trace!("fetched cartas from user id {id}");
+
+        Ok(cartas)
     }
 
     /// Fetch a carta from its UUID

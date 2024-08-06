@@ -17,6 +17,8 @@ pub struct Lang {
     pub index_about_text: String,
     pub abyss_enter_link: String,
     pub abyss_terms_link: String,
+    pub abyss_view_link: String,
+    pub abyss_delete_link: String,
     /* Terms page */
     pub tos_header: String,
     pub rules_header: String,
@@ -34,12 +36,11 @@ pub struct Lang {
     pub data_2: String,
     pub data_3: String,
     pub data_4: String,
-    /* Abyss page */
+    /* Fetch page */
     pub abyss_header: String,
     pub fetch_link: String,
     pub write_link: String,
     pub return_link: String,
-    /* Fetch page */
     pub no_new_cartas_status: String,
     /* Submit confirmation page */
     pub cancel_link: String,
@@ -70,6 +71,9 @@ pub struct Lang {
     pub view_add_reply_link: String,
     pub view_report_link: String,
     pub report_submitted_flash: String,
+    /* View cartas page */
+    pub all_header: String,
+    pub all_empty: String,
 }
 
 // Dynamic parsing: Load file at runtime with runtime errors
