@@ -35,7 +35,10 @@ pub fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String
             break;
         }
     }
-    document.add_heading(HeadingLevel::H3, "===");
+    document
+        .add_heading(HeadingLevel::H3, "===")
+        .add_blank_line()
+        .add_link("..", "<--");
 
     Ok(document.to_string())
 }

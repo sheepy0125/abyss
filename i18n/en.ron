@@ -6,18 +6,38 @@
     from_sentinel: "(unknown)",
 /* Index page */
     index_header: "Welcome to the Abyss",
+    index_about_header: "What's the Abyss?",
+    index_about_text: "You can scream into the Abyss, and the Abyss can scream back.\nWrite anonymous messages into the Abyss, receive random messages others have written, and continue the cycle by replying to them.",
     abyss_enter_link: "Descend?",
+    abyss_terms_link: "(before you descend, read the ToS)",
+/* Terms page */
+    tos_header: "ToS, rules, spying, and you!",
+    rules_header: "Laws of the Abyss",
+    rules_preface: "This capsule relies on user-submitted content. Please, we need you to make this work! The administrator (@sheepy:cinderblock.moe on Matrix) is entitled to blacklist users (certificates and IP-rules) and redact messages that've been reported to her.",
+    rule_1: "Refrain from submitting bad-faith content that you know would require the administrator to add another rule. Use your judgement, and above all else, be sane!",
+    rule_2: "Abyss content is user-submitted and anonymous; you may see content you don't like! You're encouraged to report that content to the administrator.",
+    rule_3: "Don't spam or flood this capsule with requests, please.",
+    terms_header: "Terms of the Abyss",
+    term_1: "This server is hosted in the United States; by using this capsule, you agree to abide by applicable laws. Notably, you must be 13+ (or 16+ in the EU).",
+    term_2: "By submitting content, you agree that the administrator can display and redact your text. Your text can not be edited -- either by the administrator or yourself -- once posted.",
+    term_3: "The administrator is not responsible for user-submitted content nor does she necessarily condone any content. Reported content will be sent to the administrator and she may choose to delete reported content based on her own discretion.",
+    data_header: "The Abyss is always watching!",
+    data_preface: "This capsule spies on you and collects your information. Source code can be fetched at git@github.com:sheepy0125/abyss to ensure these claims.",
+    data_1: "Your (plain text) IP address and (SHA256 hashed) certificate are tied to all messages you send; these are never displayed and strictly used for moderation purposes!",
+    data_2: "You are allowed, through this capsule, to delete messages tied to your certificate hash or that you have a ID and PIN for. Deletion entails redacting the message body, \"title,\" and \"from\" fields along with anonymizing any metadata associated with a message.",
+    data_3: "If you wish to delete a message that is not tied to a currently accessible certificate; a message that you don't have an ID and/or PIN for; a message that can be tied to you through other means (e.g. IP, browser history), contact \"abyss@sheepy.moe\" with a case report.",
+    data_4: "Logs include IP addresses and routes.",
 /* Abyss page */
     abyss_header: "You're staring into the Abyss",
-    fetch_link: "Peek into the abyss?",
-    write_link: "Scream into the abyss?",
+    fetch_link: "Listen to the Abyss?",
+    write_link: "Scream into the Abyss?",
     return_link: "Climb out?",
 /* Fetch page */
     no_new_cartas_status: "You've seen them all.",
-    /* Submit confirmation page */
+/* Submit confirmation page */
     submit_confirmation_link: "Confirm submission?",
     cancel_link: "Return to editor without submitting?",
-    /* Submit page */
+/* Submit page */
     empty_carta_error: "You gotta provide at least *some* text!",
     successful_submission_header: "Submitted",
     successful_submission_modification_text: "Your scream has been heard. If you ever want to take it back, remember the following: ",
@@ -38,7 +58,7 @@
     write_show_line_numbers_link: "Show line numbers?",
     write_too_long: "Sorry, that line is too long!",
 /* View page */
-    view_header: "The abyss screams back.",
+    view_header: "The Abyss screams back.",
     view_replies_header: "Replies",
     view_add_reply_link: "Scream back",
     view_report_link: "Report to the webmaster?",

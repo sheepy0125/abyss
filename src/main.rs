@@ -78,12 +78,27 @@ async fn main() -> anyhow::Result<()> {
         let lang = lang!(context);
         result_to_response(components::pages::index::index(context, lang))
     };
+    let terms_handle = |context| {
+        let lang = lang!(context);
+        result_to_response(components::pages::terms::terms(context, lang))
+    };
     let abyss_handle = |context| {
         let lang = lang!(context);
         if let Err(resp) = require_certificate(&context, lang) {
             return resp;
         };
         windmark_response_result_to_response(handle_client_in_abyss(context))
+    };
+
+    // Fix a link to add a trailing slash
+    let fix = |context: RouteContext| {
+        windmark::response::Response::temporary_redirect(format!("{}/", context.url.to_string()))
+    };
+    // Fix a link to remove a trailing slash
+    let rev_fix = |context: RouteContext| {
+        windmark::response::Response::temporary_redirect(
+            context.url.to_string().trim_end_matches('/'),
+        )
     };
 
     windmark::router::Router::new()
@@ -93,13 +108,18 @@ async fn main() -> anyhow::Result<()> {
         .set_fix_path(false)
         // index
         .mount("/", index_handle)
-        .mount("/:lang", index_handle)
+        .mount("/:lang", fix)
         .mount("/:lang/", index_handle)
+        // terms
+        .mount("/terms", fix)
+        .mount("/terms/", terms_handle)
+        .mount("/:lang/terms", fix)
+        .mount("/:lang/terms/", terms_handle)
         // abyss
-        .mount("/:lang/abyss", abyss_handle)
+        .mount("/:lang/abyss", fix)
         .mount("/:lang/abyss/", abyss_handle)
         .mount("/:lang/abyss/:state", abyss_handle)
-        .mount("/:lang/abyss/:state/", abyss_handle)
+        .mount("/:lang/abyss/:state/", rev_fix)
         .add_footer(|_| FOOTER.to_string())
         // route unmatched
         .set_error_handler(|_context| {
