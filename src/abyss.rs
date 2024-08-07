@@ -1,6 +1,6 @@
 use crate::{
     components::{
-        certificate::hash_certificate,
+        certificate::{hash_certificate, CERT_HASH_LEN},
         pages::abyss::{
             fetch_cartas::handle_fetching_cartas,
             submit_carta::{handle_submit_confirmation, handle_submit_new},
@@ -11,8 +11,7 @@ use crate::{
     },
     consts::{DEFAULT_CARTA, MAX_FROM_LEN, MAX_LINE_LEN, MAX_TITLE_LEN},
     database::{Carta, DatabaseCache, DATABASE, DATABASE_CACHE},
-    get_lang,
-    i18n::{Lang, ENGLISH},
+    i18n::Lang,
     state::ClientState,
 };
 
@@ -234,24 +233,40 @@ fn handle_report_carta(client: &mut ClientState, uuid: &str) -> anyhow::Result<(
 /// `/abyss` endpoint
 pub fn handle_client_in_abyss(
     context: RouteContext,
+    lang: &'static Lang,
+    certificate: bool,
 ) -> anyhow::Result<windmark::response::Response> {
-    let cert_hash = hash_certificate(&context.certificate.clone().context("no certificate")?)?;
+    let identifier = if certificate {
+        let mut buf = [0; CERT_HASH_LEN];
+        buf.copy_from_slice(
+            &hash_certificate(&context.certificate.clone().context("no certificate")?)?[..],
+        );
+        buf
+    } else {
+        let code = context
+            .parameters
+            .get("code")
+            .context("no certless code")?
+            .as_bytes();
 
-    // I18N
-    let lang = get_lang(&context);
+        if code.len() != CERT_HASH_LEN {
+            Err(anyhow!("invalid code"))?;
+        }
+
+        let mut buf = [0; CERT_HASH_LEN];
+        buf.copy_from_slice(code);
+        buf
+    };
 
     // Lookup or create new client
-    let (id, client) = ClientState::lookup_from_certificate(&cert_hash)?
+    let (id, client) = ClientState::lookup_from_identifier(&identifier)?
         .map(Ok::<_, anyhow::Error>)
-        .unwrap_or_else(|| ClientState::init_state(&cert_hash, lang.unwrap_or_else(|| &ENGLISH)))?;
+        .unwrap_or_else(|| ClientState::init_state(&identifier, lang, certificate))?;
     let mut client = client
         .lock()
         .map_err(|_| anyhow!("failed to lock client mutex"))?;
     client.poke();
-    if lang.is_none() {
-        return client.redirect_to_abyss();
-    }
-    let lang = lang.unwrap_or_else(|| &ENGLISH);
+
     if client.lang.code != lang.code {
         client.update_lang(lang)?;
     }

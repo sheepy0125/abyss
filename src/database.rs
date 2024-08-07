@@ -219,11 +219,11 @@ impl Database {
         Ok(random_carta)
     }
 
-    /// Fetch a user from their certificate hash
-    pub fn fetch_user(&mut self, cert_hash: &[u8]) -> anyhow::Result<Option<User>> {
+    /// Fetch a user from their identifier
+    pub fn fetch_user(&mut self, identifier: &[u8]) -> anyhow::Result<Option<User>> {
         use crate::schema::users::dsl;
         let user = dsl::users
-            .filter(dsl::certificate_hash.eq(cert_hash))
+            .filter(dsl::certificate_hash.eq(identifier))
             .select(User::as_select())
             .first(&mut self.connection)
             .optional()
@@ -243,9 +243,9 @@ impl Database {
     }
 
     /// Insert a new user
-    pub fn insert_user(&mut self, lang: String, cert_hash: &[u8]) -> anyhow::Result<User> {
+    pub fn insert_user(&mut self, lang: String, identifier: &[u8]) -> anyhow::Result<User> {
         let update = UserUpdate {
-            certificate_hash: cert_hash.to_vec(),
+            certificate_hash: identifier.to_vec(),
             creation: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()

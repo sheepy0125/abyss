@@ -52,7 +52,7 @@ pub fn display_ip(ip: Option<&SocketAddr>) -> String {
         .unwrap_or("0.0.0.0".to_string())
 }
 
-pub fn get_lang(context: &RouteContext) -> Option<&'static Lang> {
+fn get_lang(context: &RouteContext) -> Option<&'static Lang> {
     context
         .parameters
         .get("lang")
@@ -97,6 +97,7 @@ async fn main() -> anyhow::Result<()> {
         log!(context);
         result_to_response(components::pages::index::index(context, lang))
     };
+    let redirect_index = |_: RouteContext| windmark::response::Response::temporary_redirect("/");
     let terms_handle = |context| {
         let lang = lang!(context);
         log!(context);
@@ -108,7 +109,17 @@ async fn main() -> anyhow::Result<()> {
             return resp;
         };
         log!(context);
-        windmark_response_result_to_response(handle_client_in_abyss(context))
+        windmark_response_result_to_response(handle_client_in_abyss(context, lang, true))
+    };
+    let certless_abyss_handle = |context| {
+        let lang = lang!(context);
+        log!(context);
+        windmark_response_result_to_response(handle_client_in_abyss(context, lang, false))
+    };
+    let certless_handle = |context| {
+        let lang = lang!(context);
+        log!(context);
+        result_to_response(components::pages::certless::certless(context, lang))
     };
     let delete_handle = |context| {
         let lang = lang!(context);
@@ -147,6 +158,15 @@ async fn main() -> anyhow::Result<()> {
         .mount("/:lang/abyss/", abyss_handle)
         .mount("/:lang/abyss/:state", abyss_handle)
         .mount("/:lang/abyss/:state/", rev_fix)
+        // certificate-less abyss
+        .mount("/:lang/certless", fix)
+        .mount("/:lang/certless/", certless_handle)
+        .mount("/:lang/certless/:code", redirect_index)
+        .mount("/:lang/certless/:code/", redirect_index)
+        .mount("/:lang/certless/:code/abyss", fix)
+        .mount("/:lang/certless/:code/abyss/", certless_abyss_handle)
+        .mount("/:lang/certless/:code/abyss/:state", certless_abyss_handle)
+        .mount("/:lang/certless/:code/abyss/:state/", rev_fix)
         // delete
         .mount("/:lang/delete", fix)
         .mount("/:lang/delete/", delete_handle)

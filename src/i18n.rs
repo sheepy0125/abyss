@@ -18,7 +18,8 @@ pub struct Lang {
     pub index_ready_header: String,
     pub index_cert_text: String,
     pub index_management_header: String,
-    pub abyss_enter_link: String,
+    pub abyss_enter_cert_link: String,
+    pub abyss_enter_certless_link: String,
     pub abyss_terms_link: String,
     pub abyss_view_link: String,
     pub abyss_delete_link: String,
@@ -43,6 +44,10 @@ pub struct Lang {
     pub data_2: String,
     pub data_3: String,
     pub data_4: String,
+    /* Certless page */
+    pub certless_header: String,
+    pub certless_warning_text: String,
+    pub certless_proceed_link: String,
     /* Fetch page */
     pub abyss_header: String,
     pub fetch_link: String,

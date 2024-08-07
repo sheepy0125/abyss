@@ -11,7 +11,8 @@
     index_ready_header: "Ready?",
     index_cert_text: "P.S. - you'll need a certificate.",
     index_management_header: "Manage messages",
-    abyss_enter_link: "Descend?",
+    abyss_enter_cert_link: "Descend? (with certificate)",
+    abyss_enter_certless_link: "Descend? (without certificate)",
     abyss_terms_link: "Before you descend, read the ToS!",
     abyss_view_link: "View messages that you've written?",
     abyss_delete_link: "Delete a message you've written?",
@@ -36,6 +37,10 @@
     data_2: "You are allowed, through this capsule, to delete messages tied to your certificate hash or that you have a ID and PIN for. Deletion entails redacting the message body, \"title,\" and \"from\" fields along with anonymizing any metadata associated with a message.",
     data_3: "If you wish to delete a message that is not tied to a currently accessible certificate; a message that you don't have an ID and/or PIN for; a message that can be tied to you through other means (e.g. IP, browser history), contact \"abyss@sheepy.moe\" with a case report.",
     data_4: "Logs include IP addresses and routes.",
+/* Certless page */
+    certless_header: "Abyss, now with 100% less client SSL certificates!",
+    certless_warning_text: "Without a certificate, your ephemeral state is tied to the URL. Thus, if you leave the Abyss, your state will be lost unless you return to the same URL (e.g. from your history).",
+    certless_proceed_link: "Proceed without a certificate?",
 /* Fetch page */
     abyss_header: "You're staring into the Abyss.",
     fetch_link: "Listen to the Abyss?",

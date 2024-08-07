@@ -1,5 +1,5 @@
 use crate::abyss::AbyssState;
-use crate::components::certificate::{CertHash, CERT_HASH_LEN};
+use crate::components::certificate::CERT_HASH_LEN;
 use crate::database::{DatabaseCache, DATABASE, DATABASE_CACHE};
 use crate::i18n::Lang;
 
@@ -21,23 +21,28 @@ lazy_static! {
 }
 
 pub struct ClientState {
+    pub certificate: bool,
     keepalive: Instant,
     id: usize,
     pub abyss_state: AbyssState,
     pub lang: &'static Lang,
 }
 impl ClientState {
-    fn new(cert_hash: &[u8; CERT_HASH_LEN], lang: &'static Lang) -> anyhow::Result<Self> {
+    fn new(
+        identifier: &[u8; CERT_HASH_LEN],
+        lang: &'static Lang,
+        certificate: bool,
+    ) -> anyhow::Result<Self> {
         let user = DatabaseCache::get_or_else::<[u8; CERT_HASH_LEN], _>(
             &DATABASE_CACHE.user,
-            cert_hash,
+            identifier,
             &|| {
                 let mut database_guard = DATABASE
                     .lock()
                     .map_err(|_| anyhow!("failed to lock database mutex"))?;
 
-                let user = database_guard.fetch_user(cert_hash)?.map_or_else(
-                    || database_guard.insert_user(lang.code.clone(), cert_hash),
+                let user = database_guard.fetch_user(identifier)?.map_or_else(
+                    || database_guard.insert_user(lang.code.clone(), identifier),
                     Ok,
                 )?;
 
@@ -46,6 +51,7 @@ impl ClientState {
         )?;
 
         Ok(Self {
+            certificate,
             keepalive: Instant::now(),
             id: user.id as _,
             abyss_state: AbyssState::new(lang),
@@ -61,10 +67,7 @@ impl ClientState {
         &(self.keepalive)
     }
     pub fn redirect_to_abyss(&self) -> anyhow::Result<windmark::response::Response> {
-        Ok(windmark::response::Response::temporary_redirect(format!(
-            "/{lang}/abyss/",
-            lang = &self.lang.code,
-        )))
+        Ok(windmark::response::Response::temporary_redirect("../abyss"))
     }
     pub fn id(&self) -> usize {
         self.id
@@ -85,8 +88,9 @@ impl ClientState {
 impl ClientState {
     /// Create a new client
     pub fn init_state(
-        cert_hash: &CertHash,
+        identifier: &[u8; CERT_HASH_LEN],
         lang: &'static Lang,
+        certificate: bool,
     ) -> anyhow::Result<(usize, Arc<Mutex<Self>>)> {
         log::trace!("creating a new client");
 
@@ -96,10 +100,10 @@ impl ClientState {
 
         let hash = {
             let mut heap_clone = [0u8; CERT_HASH_LEN];
-            heap_clone.copy_from_slice(cert_hash);
+            heap_clone.copy_from_slice(identifier);
             heap_clone
         };
-        let state = ClientState::new(&hash, lang)?;
+        let state = ClientState::new(&hash, lang, certificate)?;
         let id = state.id();
         let wrapped_state = (id, Arc::new(Mutex::new(state)));
         guard.insert(hash, wrapped_state.clone());
@@ -110,16 +114,16 @@ impl ClientState {
     }
 
     /// Look up a client from the global map
-    pub fn lookup_from_certificate(
-        cert_hash: &CertHash,
+    pub fn lookup_from_identifier(
+        identifier: &[u8; CERT_HASH_LEN],
     ) -> anyhow::Result<Option<(usize, Arc<Mutex<Self>>)>> {
-        log::trace!("looking up a client from their certificate");
+        log::trace!("looking up a client from their identifier");
 
         let guard = CLIENTS
             .write()
             .map_err(|_| anyhow!("failed locking clients rwlock"))?;
 
-        if let Some((id, state)) = guard.get(&cert_hash[..]).cloned() {
+        if let Some((id, state)) = guard.get(&identifier[..]).cloned() {
             log::trace!("found client with id {id}");
             return Ok(Some((id, state)));
         };

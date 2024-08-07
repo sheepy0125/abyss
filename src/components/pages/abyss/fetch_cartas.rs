@@ -28,7 +28,14 @@ pub fn handle_fetching_cartas(client: &mut ClientState) -> anyhow::Result<String
     document
         .add_heading(HeadingLevel::H3, "===")
         .add_blank_line()
-        .add_link("..", "<--");
+        .add_link(
+            "..",
+            if client.certificate {
+                "<--"
+            } else {
+                "!!! <-- !!!"
+            },
+        );
 
     Ok(document.to_string())
 }
