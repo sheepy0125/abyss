@@ -28,13 +28,8 @@ pub fn handle_writing_carta(
         /* Right-aligned padding for line numbers, such as:
          * [ 1] lorem ispum
          * [10] hello world */
-        let padding = {
-            let pad: usize = 1 + (client.abyss_state.write_state.lines.len() >= 10) as usize;
-            let digit_count = 1 + (line_number >= 10) as usize;
-            " ".repeat(pad - digit_count)
-        };
         let line_number_formatted = if !client.abyss_state.write_state.hide_line_numbers {
-            &format!("[{padding}{line_number}]")
+            &format!("[{line_number: >2}]")
         } else {
             ""
         };
